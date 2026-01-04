@@ -405,7 +405,7 @@ function exportSettings() {
     });
 
     if (!hasAnyGear) {
-        alert("ACHTUNG: Es wurde KEIN Gear gefunden!\nBitte wähle im Simulator erst Items aus, bevor du exportierst.");
+        alert("No gear selected to export!");
         return; 
     }
 
