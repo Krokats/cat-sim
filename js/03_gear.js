@@ -174,7 +174,7 @@ function showTooltip(e, item) {
 
     if(item.effects) {
         var eff = item.effects;
-        if(eff.spellHaste) html += '<div class="tt-green">Equip: Increase your attack and casting speed by ' + eff.spellHaste + ' %.</div>';
+        if(eff.spellHaste) html += '<div class="tt-green">Equip: Increase your attack and casting speed by ' + eff.spellHaste + '%.</div>';
         if(eff.spellPower) html += '<div class="tt-green">Equip: Increases damage and healing done by magical spells and effects by up to ' + eff.spellPower + '.</div>';
         if(eff.arcaneSpellPower) html += '<div class="tt-green">Equip: Increases damage done by Arcane spells and effects by up to ' + eff.arcaneSpellPower + '.</div>';
         if(eff.natureSpellPower) html += '<div class="tt-green">Equip: Increases damage done by Nature spells and effects by up to ' + eff.natureSpellPower + '.</div>';
