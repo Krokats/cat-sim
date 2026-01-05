@@ -57,8 +57,9 @@ function runSimulation() {
                     setText("viewMax", "Max (" + results.max.dps.toFixed(1) + ")");
 
                     switchView('avg');
-                    var btnW = document.getElementById("btnWeights");
-                    if(btnW) btnW.disabled = false;
+                    //var btnW = document.getElementById("btnWeights");
+                    //if(btnW) btnW.disabled = false;
+                    
                     updateProgress(100);
                 } catch (e) { alert("Error: " + e.message); console.error(e); } 
                 finally { setTimeout(hideProgress, 200); }
