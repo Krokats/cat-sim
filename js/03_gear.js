@@ -852,7 +852,7 @@ function calculateGearStats() {
     if(getVal("buff_elixir_dreamshard")) buffSP += 15;
     if(getVal("buff_elixir_nature")) buffSPNat += 55; // FIXED: Nature
     if(getVal("buff_elixir_arcane_power")) buffSPArc += 40; // FIXED: Arcane
-    if(getVal("buff_elixir_greater_arcane")) buffSPArc += 35; // FIXED: Arcane
+    if(getVal("buff_elixir_greater_arcane")) buffSP += 35; // FIXED: Total SP
     if(getVal("buff_dreamtonic")) buffSP += 35;
     if(getVal("buff_cerebral")) buffInt += 25;
     if(getVal("buff_wizard_oil")) buffSP += 36;
