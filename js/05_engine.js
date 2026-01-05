@@ -99,8 +99,9 @@ function calculateWeights() {
     setTimeout(function() {
         try {
             var b = getInputs(); 
-            b.mode = "D_AVG"; b.iterations = 1; b.maxTime = 120;
-            
+            //b.mode = "D_AVG"; b.iterations = 1; b.maxTime = 120;
+            b.mode = "S"; b.iterations = 10000; b.maxTime = 120;
+
             var rB = runCoreSimulation(b).avg.dps;
 
             var dSP = 50;
