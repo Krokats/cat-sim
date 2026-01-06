@@ -32,6 +32,8 @@ function setupUIListeners() {
         if (el) {
             el.addEventListener('change', function () {
                 updateEnemyInfo();
+                // Auch hier sicherheitshalber updaten
+                updateSpellStats();
                 saveCurrentState();
             });
             el.addEventListener('input', updateEnemyInfo);
@@ -66,12 +68,16 @@ function setupUIListeners() {
             el.addEventListener('change', function () {
                 // Trigger calculation for Buffs OR Manual Stats Toggle
                 if (id.startsWith("buff_") || id === "manual_stats") calculateGearStats();
+                
+                // NEU: Automatische Aktualisierung der Spell Stats bei jeder Änderung
+                updateSpellStats();
+
                 saveCurrentState();
             });
         }
     });
 
-    // NEU: Weight Config Listener
+    // Weight Config Listener
     var wMethod = document.getElementById('weight_calcMethod');
     var wIter = document.getElementById('weight_simCount');
     if (wMethod) {
