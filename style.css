@@ -914,8 +914,9 @@ input:checked+.slider::before {
 /* --- CHAR SHEET LAYOUT --- */
 .char-sheet {
     display: grid;
-    grid-template-columns: 300px 1fr 300px;
-    gap: 30px;
+    /* ÄNDERUNG: Links/Rechts fixiert auf 300px. Mitte flexibel mit minmax */
+    grid-template-columns: 300px minmax(240px, 1fr) 300px;
+    gap: 15px;
     margin-bottom: 30px;
     align-items: start;
 }
@@ -1381,8 +1382,9 @@ input:checked+.slider::before {
 }
 
 /* RESPONSIVE */
-@media (max-width: 1200px) {
+@media (max-width: 1360px) {
     .char-sheet {
+        /* In der 2-Spalten Ansicht: Links und Rechts teilen sich den Platz, Mitte rutscht hoch */
         grid-template-columns: 1fr 1fr;
     }
 
