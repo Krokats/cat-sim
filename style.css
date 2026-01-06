@@ -523,6 +523,35 @@ input:checked+.slider::before {
     background: rgba(255, 125, 10, 0.1);
 }
 
+/* Neuer blauer Button für Stat Weights */
+.blue-btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: 'Cinzel', serif;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #448aff 0%, #2979ff 100%); /* Arcane Blue Gradient */
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(68, 138, 255, 0.4);
+}
+
+.blue-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(68, 138, 255, 0.6);
+    filter: brightness(1.1);
+}
+
+.blue-btn:active {
+    transform: translateY(0);
+}
+
 
 /* RESULTS SECTION */
 #resultsArea {
