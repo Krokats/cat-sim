@@ -40,10 +40,10 @@ function runSimulation() {
     var iter = document.getElementById("simCount") ? document.getElementById("simCount").value : "1";
     var method = document.getElementById("calcMethod") ? document.getElementById("calcMethod").value : "S";
     var txt = "Simulating...";
-    if(method === "S") txt = "Simulating " + iter + " Fights...";
-    
+    if (method === "S") txt = "Simulating " + iter + " Fights...";
+
     showProgress(txt);
-    
+
     // Reset Weights display to placeholders if they are not recalculated
     setText("val_crit", "-");
     setText("val_hit", "-");
@@ -65,7 +65,7 @@ function runSimulation() {
                     setText("viewMax", "Max (" + results.max.dps.toFixed(1) + ")");
 
                     switchView('avg');
-                    
+
                     updateProgress(100);
                 } catch (e) { alert("Error: " + e.message); console.error(e); }
                 finally { setTimeout(hideProgress, 200); }
@@ -84,10 +84,10 @@ function runAllSims() {
             showOverview();
             return;
         }
-        
+
         // Update Text
         var tEl = document.getElementById("progressText");
-        if(tEl) tEl.innerText = "Simulating " + (idx+1) + " / " + SIM_LIST.length;
+        if (tEl) tEl.innerText = "Simulating " + (idx + 1) + " / " + SIM_LIST.length;
 
         var pct = (idx / SIM_LIST.length) * 100;
         updateProgress(pct);
@@ -109,13 +109,13 @@ function runAllSims() {
 function calculateWeights() {
     // Phase 1: Prep
     showProgress("Initializing Weights...");
-    
+
     // Setup variables outside the timeouts
     var b, wMethod, wIter;
     var rB, wSP, wCrit, wHit, wHaste;
 
     // Use a chain of timeouts to allow UI updates between heavy calculations
-    setTimeout(function() {
+    setTimeout(function () {
         try {
             b = getInputs();
             wMethod = document.getElementById('weight_calcMethod') ? document.getElementById('weight_calcMethod').value : "S";
@@ -126,16 +126,16 @@ function calculateWeights() {
             // Phase 1: Baseline
             setText("progressText", "Calculating Baseline (1/5)...");
             updateProgress(1);
-            
-            setTimeout(function() {
+
+            setTimeout(function () {
                 try {
                     rB = runCoreSimulation(b).avg.dps;
-                    
+
                     // Phase 2: SP
                     setText("progressText", "Calculating SP Value (2/5)...");
                     updateProgress(20);
-                    
-                    setTimeout(function() {
+
+                    setTimeout(function () {
                         try {
                             var dSP = 50;
                             var cSP = JSON.parse(JSON.stringify(b)); cSP.power.sp += dSP;
@@ -146,8 +146,8 @@ function calculateWeights() {
                             // Phase 3: Crit
                             setText("progressText", "Calculating Crit Value (3/5)...");
                             updateProgress(40);
-                            
-                            setTimeout(function() {
+
+                            setTimeout(function () {
                                 try {
                                     var cCrit = JSON.parse(JSON.stringify(b)); cCrit.stats.crit += 1;
                                     wCrit = (runCoreSimulation(cCrit).avg.dps - rB) / wSP;
@@ -157,7 +157,7 @@ function calculateWeights() {
                                     setText("progressText", "Calculating Hit (4/5)...");
                                     updateProgress(60);
 
-                                    setTimeout(function() {
+                                    setTimeout(function () {
                                         try {
                                             // Hit
                                             var cHit = JSON.parse(JSON.stringify(b));
@@ -168,33 +168,33 @@ function calculateWeights() {
 
                                             setText("progressText", "Haste (4/5)...");
                                             updateProgress(80);
-                                            
-                                            setTimeout(function() {
-                                            try {
-                                            // Haste
-                                                var cHaste = JSON.parse(JSON.stringify(b)); cHaste.stats.haste += 1;
-                                                wHaste = (runCoreSimulation(cHaste).avg.dps - rB) / wSP;
-                                                if (wHaste < 0) wHaste = 0;
 
-                                                // Output
-                                                setText("val_crit", wCrit.toFixed(2));
-                                                setText("val_hit", wHit.toFixed(2));
-                                                setText("val_haste", wHaste.toFixed(2));
+                                            setTimeout(function () {
+                                                try {
+                                                    // Haste
+                                                    var cHaste = JSON.parse(JSON.stringify(b)); cHaste.stats.haste += 1;
+                                                    wHaste = (runCoreSimulation(cHaste).avg.dps - rB) / wSP;
+                                                    if (wHaste < 0) wHaste = 0;
 
-                                                updateProgress(100);
-                                                setTimeout(hideProgress, 300);
+                                                    // Output
+                                                    setText("val_crit", wCrit.toFixed(2));
+                                                    setText("val_hit", wHit.toFixed(2));
+                                                    setText("val_haste", wHaste.toFixed(2));
+
+                                                    updateProgress(100);
+                                                    setTimeout(hideProgress, 300);
                                                 } catch (e) { console.error(e); hideProgress(); }
                                             }, 50);
                                         } catch (e) { console.error(e); hideProgress(); }
                                     }, 50);
 
-                                } catch(e) { console.error(e); hideProgress(); }
+                                } catch (e) { console.error(e); hideProgress(); }
                             }, 50);
 
-                        } catch(e) { console.error(e); hideProgress(); }
+                        } catch (e) { console.error(e); hideProgress(); }
                     }, 50);
 
-                } catch(e) { console.error(e); hideProgress(); }
+                } catch (e) { console.error(e); hideProgress(); }
             }, 50);
 
         } catch (e) { console.error(e); hideProgress(); }
@@ -342,7 +342,7 @@ function runCoreSimulation(cfg) {
                 }
             }
 
-            var resData; if (cfg.mode === "D_AVG") resData = { val: 1.0, txt: "" }; else resData = getResist(spell.type); var d = calculateDamageFull(spell, false, snap, crit, resData); RunStats.totalDmg += d.total; RunStats.dmgT36p += d.t3Part; if (d.crit > 0) RunStats.dmgCrit += d.crit; if (spell.id === "Wrath") RunStats.dmgWrath += d.total; if (spell.id === "Starfire") RunStats.dmgStarfire += d.total; if (spell.id === "Moonfire") RunStats.dmgMFDirect += d.total; if (cfg.talents.ooc && RNG.check(5, "ooc")) { State.ooc = true; log(State.t, "PROC", "Omen of Clarity", "", null, null, "Clearcast"); } if (spell.id === "Moonfire" && cfg.talents.boon && RNG.check(30, "boon")) { if (State.boon < 3) State.boon++; } if (spell.id === "Moonfire" && cfg.gear.idolMoonfang) { RunStats.totalMana -= 50; log(State.t, "PROC", "Moonfang", "", null, null, "Restore 50", "-50"); } if (cfg.gear.binding && State.t >= State.bindingCD && RNG.check(5, "binding")) { State.bindingEnd = State.t + 5.0; State.bindingCD = State.t + 15.0; log(State.t, "PROC", "Binding", "", null, null, "+100 SP"); }
+            var resData; if (cfg.mode === "D_AVG") resData = { val: 1.0, txt: "" }; else resData = getResist(spell.type); var d = calculateDamageFull(spell, false, snap, crit, resData); RunStats.totalDmg += d.total; RunStats.dmgT36p += d.t3Part; if (d.crit > 0) RunStats.dmgCrit += d.crit; if (spell.id === "Wrath") RunStats.dmgWrath += d.total; if (spell.id === "Starfire") RunStats.dmgStarfire += d.total; if (spell.id === "Moonfire") RunStats.dmgMFDirect += d.total; if (cfg.talents.ooc && RNG.check(10, "ooc")) { State.ooc = true; log(State.t, "PROC", "Omen of Clarity", "", null, null, "Clearcast"); } if (spell.id === "Moonfire" && cfg.talents.boon && RNG.check(30, "boon")) { if (State.boon < 3) State.boon++; } if (spell.id === "Moonfire" && cfg.gear.idolMoonfang) { RunStats.totalMana -= 50; log(State.t, "PROC", "Moonfang", "", null, null, "Restore 50", "-50"); } if (cfg.gear.binding && State.t >= State.bindingCD && RNG.check(5, "binding")) { State.bindingEnd = State.t + 5.0; State.bindingCD = State.t + 15.0; log(State.t, "PROC", "Binding", "", null, null, "+100 SP"); }
 
             // SCYTHE PROC (Passive)
             if (cfg.gear.scythe && RNG.check(5, "scythe")) { var baseScythe = 500 + Math.random() * 150; if (cfg.mode !== "S") baseScythe = 575; var scytheDmg = baseScythe * cosMod; if (RNG.check(cfg.stats.crit, "scythe")) scytheDmg *= 1.5; RunStats.totalDmg += scytheDmg; RunStats.dmgScythe += scytheDmg; log(State.t, "PROC DMG", "Scythe of Elune", "Hit", { norm: scytheDmg, ecl: 0, crit: 0, total: scytheDmg }, null, "Arcane Dmg"); State.scytheImbued = true; }
