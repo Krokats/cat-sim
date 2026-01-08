@@ -1,202 +1,415 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krokat's Feral Sim v0.01</title>
+    <title>Turtle WoW Feral Simulator (1.18)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="favicon.ico"> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 </head>
 
 <body>
 
-    <div class="background-overlay"></div>
-    <div id="toast" class="toast">Action Successful!</div>
+    <div id="toast" class="toast">Aktion erfolgreich!</div>
 
-    <div class="main-container">
-        
-        <div class="header">
-            <h1>Krokat's Feralsim<span>-</span></h1>
-            <div class="sim-controls">
-                <button id="btnRun" onclick="startSim()">Run Simulation</button>
-                <button class="secondary" onclick="exportSettings()">Export</button>
-                <button class="secondary" onclick="importSettings()">Import</button>
+    <div id="progressOverlay" class="progress-overlay hidden">
+        <div class="progress-box">
+            <div id="progressText" class="progress-text">Lade Datenbank...</div>
+            <div class="progress-track">
+                <div id="progressFill" class="progress-fill"></div>
             </div>
         </div>
+    </div>
 
-        <div class="content-grid">
-            
-            <div class="col-settings">
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1>Feral Druid <span>Simulator</span></h1>
+                <div class="subtitle">Turtle WoW Patch 1.18 | Engine v1.0</div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="exportSettings()">Export JSON</button>
+                <button class="btn btn-secondary" onclick="importSettings()">Import JSON</button>
+            </div>
+        </header>
+
+        <div class="main-grid">
+
+            <aside class="col-settings">
                 
-                <div class="card">
-                    <div class="card-title">Simulation Settings</div>
-                    <div class="input-group">
-                        <label>Duration (sec)</label>
-                        <input type="number" id="simTime" value="60">
-                    </div>
-                    <div class="input-group">
-                        <label>Iterations</label>
-                        <input type="number" id="simIter" value="1000">
-                    </div>
-                    <div class="input-group">
-                        <label>Enemy Level</label>
-                        <select id="enemy_level">
-                            <option value="60">60</option>
-                            <option value="61">61</option>
-                            <option value="62">62</option>
-                            <option value="63" selected>63 (Boss)</option>
+                <div class="input-group">
+                    <div class="input-label">Simulation</div>
+                    <div class="stat-row">
+                        <label>Modus:</label>
+                        <select id="calcMethod">
+                            <option value="S">Durchschnitt (Simulation)</option>
+                            <option value="D">Debug (Kampf-Log)</option>
                         </select>
                     </div>
-                    <div class="input-group">
-                        <label>Enemy Armor</label>
-                        <input type="number" id="enemy_armor" value="3731" title="3731 is standard Boss armor (after Sunder/Faerie)">
+                    <div class="stat-row">
+                        <label>Iterationen:</label>
+                        <input type="number" id="simCount" value="1000" step="100">
+                    </div>
+                    <div class="stat-row">
+                        <label>Kampfdauer (sek):</label>
+                        <input type="number" id="maxTime" value="60" step="10">
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-title">
-                        Character Stats (Unbuffed)
-                        <span style="font-size:0.8em; font-weight:normal; float:right;">
-                            <input type="checkbox" id="manual_stats"> Manual Override
-                        </span>
+                <div class="input-group">
+                    <div class="input-label">
+                        Spieler Werte (Unbuffed)
+                        <input type="checkbox" id="manual_stats" title="Manuelle Eingabe aktivieren" style="width:auto; margin-left:10px;">
                     </div>
-                    <div class="stats-grid">
-                        <div class="input-group">
-                            <label>Strength</label>
-                            <input type="number" id="stat_strength" value="150">
-                        </div>
-                        <div class="input-group">
-                            <label>Agility</label>
-                            <input type="number" id="stat_agility" value="250">
-                        </div>
-                        <div class="input-group">
-                            <label>Attack Power</label>
-                            <input type="number" id="stat_ap" value="800">
-                        </div>
-                        <div class="input-group">
-                            <label>Crit %</label>
-                            <input type="number" id="stat_crit" value="25.0" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Hit %</label>
-                            <input type="number" id="stat_hit" value="5.0" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Haste %</label>
-                            <input type="number" id="stat_haste" value="0" step="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Weapon DPS</label>
-                            <input type="number" id="weapon_dps" value="55.0" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Weapon Speed</label>
-                            <input type="number" id="weapon_speed" value="2.0" step="0.1">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">Talents & Mechanics</div>
-                    <div class="checkbox-list">
-                        <label><input type="checkbox" id="talent_furor" checked> Furor (5/5)</label>
-                        <label><input type="checkbox" id="talent_open_wounds" checked> Open Wounds (Rake buffs Claw)</label>
-                        <label><input type="checkbox" id="talent_imp_shred" checked> Imp. Shred (-Cost)</label>
-                        <label><input type="checkbox" id="talent_omen" checked> Omen of Clarity</label>
-                        <hr>
-                        <label><input type="checkbox" id="meta_wolfshead" checked> Wolfshead Effect (Item/Enchant)</label>
-                        <label><input type="checkbox" id="meta_reshift" checked> Use Reshift / Powershift</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-middle">
-                
-                <div class="card">
-                    <div class="card-title">Rotation Priority</div>
-                    <div class="input-group">
-                        <label>Finisher Mode</label>
-                        <select id="finisher_mode">
-                            <option value="smart">Smart (Rip if high HP)</option>
-                            <option value="bite" selected>Aggressive (Always Bite)</option>
-                            <option value="rip">DoT Focus (Always Rip)</option>
-                        </select>
-                    </div>
-                    <div class="checkbox-list">
-                        <label><input type="checkbox" id="conf_use_rake" checked> Maintain Rake (Crucial for OW)</label>
-                        <label><input type="checkbox" id="conf_use_tigersfury"> Use Tiger's Fury</label>
-                        <label><input type="checkbox" id="use_shred" checked> Use Shred (Positioned Behind)</label>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">Buffs & Consumables</div>
-                    <div class="buff-grid">
-                        <label><input type="checkbox" id="buff_motw" checked> Mark of the Wild</label>
-                        <label><input type="checkbox" id="buff_kings" checked> Blessing of Kings</label>
-                        <label><input type="checkbox" id="buff_might" checked> Blessing of Might</label>
-                        <label><input type="checkbox" id="buff_horn"> Horn of Winter</label>
-                        <label><input type="checkbox" id="buff_mongoose" checked> Elixir of Mongoose</label>
-                        <label><input type="checkbox" id="buff_giants"> Elixir of Giants</label>
-                        <label><input type="checkbox" id="buff_juju_power"> Juju Power (Str)</label>
-                        <label><input type="checkbox" id="buff_juju_might"> Juju Might (AP)</label>
-                        <label><input type="checkbox" id="buff_dumpling" checked> Smoked Desert Dumplings</label>
-                        <label><input type="checkbox" id="buff_scorpok"> R.O.I.D.S (Scorpok)</label>
-                        <label><input type="checkbox" id="buff_elemental_stone"> Ele Sharp Stone (Crit)</label>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">Equipped Gear</div>
-                    <div id="gearListContainer" class="gear-list-small">
-                        <div style="font-size:0.8em; color:var(--text-muted); text-align:center;">
-                            Load items via JS to populate this list.
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="col-results">
-                <div class="card sticky-card">
-                    <div class="card-title">Simulation Results</div>
                     
+                    <div class="stat-row">
+                        <label title="Stärke (1 Str = 2 AP)">Stärke:</label>
+                        <input type="number" id="statStr" value="150" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Beweglichkeit (1 Agi = 1 AP + Crit)">Beweglichkeit:</label>
+                        <input type="number" id="statAgi" value="250" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Intelligenz (nur für Mana Pool/Shifting)">Intelligenz:</label>
+                        <input type="number" id="statInt" value="120" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Totale Angriffskraft (inkl. Buffs wenn manuell)">Attack Power:</label>
+                        <input type="number" id="statAp" value="800" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Kritische Trefferchance in %">Crit Chance %:</label>
+                        <input type="number" id="statCrit" value="20.0" step="0.1" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Trefferchance in % (Softcap 8% Turtle)">Hit Chance %:</label>
+                        <input type="number" id="statHit" value="5.0" step="0.1" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Angriffstempo Bonus (z.B. MCP)">Haste %:</label>
+                        <input type="number" id="statHaste" value="0" step="1" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Waffenskill (300 + Items). Wichtig für Glancing Blows!">Waffenskill:</label>
+                        <input type="number" id="statWpnSkill" value="300" disabled>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Extra AP auf Waffe (Feral AP)">Waffen Feral AP:</label>
+                        <input type="number" id="statFeralAp" value="0" disabled>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <div class="input-label">Buffs & Consumables</div>
+                    <div class="stat-row">
+                        <label>Mark of the Wild:</label>
+                        <input type="checkbox" id="buff_motw" checked>
+                    </div>
+                    <div class="stat-row">
+                        <label>Blessing of Kings:</label>
+                        <input type="checkbox" id="buff_bok" checked>
+                    </div>
+                    <div class="stat-row">
+                        <label>Blessing of Might:</label>
+                        <input type="checkbox" id="buff_might" checked>
+                    </div>
+                    <div class="stat-row">
+                        <label>Mongoose / Agi Pot:</label>
+                        <input type="checkbox" id="buff_mongoose" checked>
+                    </div>
+                    <div class="stat-row">
+                        <label>Juju Power / Giants:</label>
+                        <input type="checkbox" id="buff_juju" checked>
+                    </div>
+                    <div class="stat-row">
+                        <label>R.O.I.D.S (Blasted Lands):</label>
+                        <input type="checkbox" id="buff_roids">
+                    </div>
+                    <div class="stat-row">
+                        <label>Songflower Serenade:</label>
+                        <input type="checkbox" id="buff_songflower">
+                    </div>
+                    <div class="stat-row">
+                        <label>Warchief's Blessing:</label>
+                        <input type="checkbox" id="buff_wcb">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <div class="input-label">Gegner Einstellungen</div>
+                    <div class="stat-row">
+                        <label>Level:</label>
+                        <select id="enemy_level">
+                            <option value="60">Level 60</option>
+                            <option value="61">Level 61</option>
+                            <option value="62">Level 62</option>
+                            <option value="63" selected>Level 63 (Boss)</option>
+                        </select>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Rüstungswert (Standard Boss: 3731)">Rüstung:</label>
+                        <input type="number" id="conf_armor" value="3731" step="100">
+                    </div>
+                    <div class="stat-row">
+                        <label title="Kann Bluten? (Nein bei Mech/Elem)">Kann Bluten:</label>
+                        <input type="checkbox" id="conf_canBleed" checked>
+                    </div>
+                </div>
+
+                <div class="input-group" style="border-left: 3px solid var(--accent-color);">
+                    <div class="input-label">Kampf & Rotation</div>
+                    
+                    <div class="stat-row">
+                        <label title="Stehst du hinter dem Boss? (Erlaubt Shred)">Hinter Gegner:</label>
+                        <input type="checkbox" id="conf_behind" checked>
+                    </div>
+
+                    <div class="stat-row">
+                        <label title="Powershifting nutzen wenn Energie leer?">Nutze Powershift:</label>
+                        <input type="checkbox" id="conf_reshift" checked>
+                    </div>
+
+                    <div class="stat-row">
+                        <label title="Nutze Krallenhieb für 'Open Wounds' Bonus (+30% Claw Dmg)">Nutze Rake:</label>
+                        <input type="checkbox" id="conf_useRake" checked>
+                    </div>
+
+                    <div class="stat-row">
+                        <label title="Nutze Wilder Biss bei 5 CP (statt nur Rip)">Nutze Bite:</label>
+                        <input type="checkbox" id="conf_useBite" checked>
+                    </div>
+
+                    <div class="stat-row">
+                        <label title="Ignoriere Energie-Ticks beim Shiften (Mehr Dmg, viel mehr Mana)">Aggressiv Shiften:</label>
+                        <input type="checkbox" id="conf_aggroShift">
+                    </div>
+                </div>
+            </aside>
+
+            <main class="col-gear">
+                
+                <div class="gear-container" id="gearContainer">
+                    <div class="gear-slot" data-slot="Head">
+                        <div class="slot-icon" id="icon_Head"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Head</div>
+                            <select class="item-select" id="sel_Head"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Head"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Head" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Neck">
+                        <div class="slot-icon" id="icon_Neck"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Neck</div>
+                            <select class="item-select" id="sel_Neck"></select>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Neck" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Shoulder">
+                        <div class="slot-icon" id="icon_Shoulder"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Shoulder</div>
+                            <select class="item-select" id="sel_Shoulder"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Shoulder"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Shoulder" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Back">
+                        <div class="slot-icon" id="icon_Back"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Back</div>
+                            <select class="item-select" id="sel_Back"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Back"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Back" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Chest">
+                        <div class="slot-icon" id="icon_Chest"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Chest</div>
+                            <select class="item-select" id="sel_Chest"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Chest"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Chest" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Wrist">
+                        <div class="slot-icon" id="icon_Wrist"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Wrist</div>
+                            <select class="item-select" id="sel_Wrist"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Wrist"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Wrist" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Hands">
+                        <div class="slot-icon" id="icon_Hands"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Hands</div>
+                            <select class="item-select" id="sel_Hands"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Hands"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Hands" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Waist">
+                        <div class="slot-icon" id="icon_Waist"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Waist</div>
+                            <select class="item-select" id="sel_Waist"></select>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Waist" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Legs">
+                        <div class="slot-icon" id="icon_Legs"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Legs</div>
+                            <select class="item-select" id="sel_Legs"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Legs"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Legs" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Feet">
+                        <div class="slot-icon" id="icon_Feet"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Feet</div>
+                            <select class="item-select" id="sel_Feet"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Feet"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Feet" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Finger">
+                        <div class="slot-icon" id="icon_Finger1"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Finger 1</div>
+                            <select class="item-select" id="sel_Finger1"></select>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Finger1" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Finger">
+                        <div class="slot-icon" id="icon_Finger2"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Finger 2</div>
+                            <select class="item-select" id="sel_Finger2"></select>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Finger2" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Trinket">
+                        <div class="slot-icon" id="icon_Trinket1"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Trinket 1</div>
+                            <select class="item-select" id="sel_Trinket1"></select>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Trinket1" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Trinket">
+                        <div class="slot-icon" id="icon_Trinket2"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Trinket 2</div>
+                            <select class="item-select" id="sel_Trinket2"></select>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Trinket2" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="TwoHand">
+                        <div class="slot-icon" id="icon_MainHand"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Weapon (2H)</div>
+                            <select class="item-select" id="sel_MainHand"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_MainHand"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_MainHand" target="_blank">🔗</a>
+                    </div>
+                    <div class="gear-slot" data-slot="Idol">
+                        <div class="slot-icon" id="icon_Idol"></div>
+                        <div class="slot-info">
+                            <div class="slot-name">Idol</div>
+                            <select class="item-select" id="sel_Idol"></select>
+                            <div class="enchant-row">
+                                <small>Enchant:</small>
+                                <select class="enchant-select" id="ench_Idol"></select>
+                            </div>
+                        </div>
+                        <a href="#" class="slot-link-btn" id="link_Idol" target="_blank">🔗</a>
+                    </div>
+
+                </div>
+                
+                <div class="button-area">
+                    <button id="btnSimulate" class="btn btn-primary btn-large">RUN SIMULATION</button>
+                </div>
+            </main>
+
+            <aside class="col-results">
+                <div class="result-card">
+                    <div class="result-title">DPS Ergebnis</div>
                     <div class="dps-display">
-                        <span id="resultDPS">0</span>
-                        <small>DPS</small>
+                        <span id="resDps">0</span> <small>DPS</small>
                     </div>
-
-                    <div class="resource-viz">
-                        <div class="energy-bar-bg">
-                            <div id="vizEnergy" class="energy-bar-fill" style="width: 100%;"></div>
-                            <span id="vizEnergyText">100 / 100</span>
-                        </div>
-                        <div id="vizCombo" class="combo-container">
-                            <div class="cp"></div><div class="cp"></div><div class="cp"></div><div class="cp"></div><div class="cp"></div>
-                        </div>
-                    </div>
-
-                    <div class="result-summary">
-                        <div class="row"><span>Total Damage:</span> <span id="resultTotal">0</span></div>
-                        <div class="row"><span>Duration:</span> <span id="resultDur">0s</span></div>
-                        <hr>
-                        <div class="row"><span>Crit Rate (Obs):</span> <span id="resultCrit">0%</span></div>
-                        <div class="row"><span>Hit Rate (Obs):</span> <span id="resultHit">0%</span></div>
-                    </div>
-
-                    <div class="card-title" style="margin-top:20px;">Damage Breakdown</div>
-                    <div id="dpsBreakdown" class="dps-breakdown">
+                    <div class="stat-grid" id="resultStats">
                         </div>
                 </div>
-            </div>
 
+                <div class="log-container hidden" id="logContainer">
+                    <div class="log-header">Kampf Log (Auszug)</div>
+                    <div class="log-content" id="simLog"></div>
+                </div>
+
+                <div class="weights-card">
+                    <div class="result-title">Stat Weights (EP)</div>
+                    <div id="statWeights">
+                        <div class="weight-row">Drücke "Run Sim" für Werte...</div>
+                    </div>
+                    <div class="weight-controls">
+                        <button class="btn btn-small" onclick="calculateWeights()">Berechnen</button>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="result-title">Charakter Zusammenfassung</div>
+                    <div class="sum-row"><span>Attack Power</span> <span id="sumAp">0</span></div>
+                    <div class="sum-row"><span>Crit Chance</span> <span id="sumCrit">0%</span></div>
+                    <div class="sum-row"><span>Hit Chance</span> <span id="sumHit">0%</span></div>
+                    <div class="sum-row"><span>Haste (MCP)</span> <span id="sumHaste">0%</span></div>
+                    <div class="sum-row"><span>Waffenskill</span> <span id="sumSkill">300</span></div>
+                    <div class="sum-sec-title" style="margin-top:15px;">Target</div>
+                    <div class="sum-row"><span>Armor (Red.)</span> <span id="sumArmor">3731</span></div>
+                </div>
+            </aside>
         </div>
+        
+        <div class="summary-footer">Krokat's Turtle WoW Feral Simulator v1.0</div>
     </div>
 
     <script src="js/01_globals.js"></script>
