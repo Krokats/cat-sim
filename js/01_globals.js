@@ -1,5 +1,6 @@
 /**
- * Moonkin Simulation - File 1: Global State & Constants
+ * Turtle WoW Feral Sim - File 1: Global State & Constants
+ * Updated for Patch 1.17.2+ (Reshift, Open Wounds, etc.)
  */
 
 // ============================================================================
@@ -16,42 +17,106 @@ var ENCHANT_DB = [];
 var GEAR_SELECTION = {};
 var ENCHANT_SELECTION = {};
 
+// Defines all HTML Input IDs that are saved/loaded and used in calculation
 var CONFIG_IDS = [
-    "maxTime", "simCount", "avcd", "calcMethod",
-    "statHit", "statCrit", "statHaste",
-    "sp_gen", "sp_nature", "sp_arcane", "sp_pen",
-    "enemy_level", "res_arcane", "res_nature", "enemy_cos",
-    "rota_fish", "start_boat", "wrath_flight",
-    "rota_is", "rota_mf", "rota_eclDot", "rota_interrupt",
-    "rota_starfire", "rota_wrath",
-    "t3_4p", "t3_6p", "t3_8p", "t35_5p",
-    "idolEoF", "idolMoon", "idolProp", "idolMoonfang",
-    "item_binding", "item_scythe", "item_sulfuras", "item_woc",
-    "item_reos", "item_toep", "item_roop", "item_zhc", "item_scythe_use",
-    "trinket_strat",
-    "char_race",
-    "manual_stats",
-    "weight_calcMethod",
-    "weight_simCount",
-    "buff_moonkin", "buff_atiesh_druid", "buff_atiesh_mage", "buff_atiesh_warlock",
-    "buff_arcane_brilliance", "buff_bok", "buff_emerald", "buff_gotw",
-    "buff_food_sp", "buff_food_int",
-    "buff_elixir_dreamshard", "buff_elixir_nature", "buff_elixir_arcane_power", "buff_elixir_greater_arcane",
-    "buff_dreamtonic", "buff_cerebral", "buff_wizard_oil", "buff_flask"
+    // Simulation Settings
+    "simTime", "simIter", "calcMethod",
+
+    // Player Stats (Base & Gear)
+    "stat_strength", "stat_agility", "stat_ap", 
+    "stat_crit", "stat_hit", "stat_haste",
+    "weapon_dps", "weapon_speed", // Important for White Hits
+    
+    // Enemy
+    "enemy_level", "enemy_armor", 
+
+    // Talents & Turtle Specifics
+    "talent_furor",         // 5/5 Furor -> 40 Energy on shift
+    "talent_open_wounds",   // Open Wounds (Claw ignores armor / dmg boost on bleeding targets?) -> Turtle changed this: Rake buffs Claw
+    "talent_imp_shred",     // Improved Shred cost reduction
+    "talent_imp_claws",     // Crit chance for Claw/Rake
+    "talent_omen",          // Omen of Clarity
+    "meta_wolfshead",       // Wolfshead Helm Effect (Item or Enchant on Turtle)
+    "meta_reshift",         // Uses "Reshift" Spell instead of Macro (Turtle specific)
+
+    // Rotation Priority
+    "conf_prio_rip",        // Use Rip?
+    "conf_prio_bite",       // Use Ferocious Bite?
+    "conf_use_rake",        // Maintain Rake (Crucial for Open Wounds)
+    "conf_min_energy",      // Pool Energy threshold
+    "conf_use_tigersfury",  // Use Tiger's Fury logic
+
+    // Buffs & Consumables
+    "buff_motw", "buff_kings", "buff_might", "buff_horn",
+    "buff_mongoose", "buff_giants", "buff_juju_power", "buff_juju_might",
+    "buff_winterfall", "buff_dumpling", "buff_scorpok",
+    "buff_blasted_str", "buff_blasted_agi",
+    "buff_elemental_stone" // Elemental Sharpening Stone
 ];
 
-var SLOT_LAYOUT = {
-    left: ["Head", "Neck", "Shoulder", "Back", "Chest", "Wrist"],
-    right: ["Hands", "Waist", "Legs", "Feet", "Finger 1", "Finger 2", "Trinket 1", "Trinket 2"],
-    bottom: ["Main Hand", "Off Hand"]
+// ============================================================================
+// 2. SIMULATION STATE OBJECT (The "Engine" State)
+// ============================================================================
+var State = {
+    t: 0,               // Current Time
+    duration: 60,       // Max Duration
+    
+    // Resources
+    energy: 100,        // 0 - 100
+    combo: 0,           // 0 - 5
+    mana: 2000,         // Mana pool (relevant for Shifting costs)
+    
+    // Timers
+    gcdEnd: 0,          // Global Cooldown Finish Time
+    swingTimer: 0,      // Next Auto-Attack Time
+    energyTick: 0,      // Next Energy Regen Tick (2s interval)
+    
+    // Auras (Buffs/Debuffs) - Value is expiration timestamp (0 = inactive)
+    buff_tigersfury: 0,
+    buff_clearcasting: 0, // Omen of Clarity proc
+    
+    debuff_faeriefire: 0,
+    debuff_rake: 0,
+    debuff_rip: 0,
+    
+    // Cooldowns - Value is ready timestamp
+    cd_tigersfury: 0,
+    cd_reshift: 0,      // Generic Shifting CD
+    cd_faeriefire: 0,
+    
+    // Stats Snapshot (Dynamic stats during combat)
+    currentAP: 0,
+    currentCrit: 0,
+    currentHit: 0,
+    currentHaste: 1.0,  // Multiplier (1.0 = 100%)
 };
 
-// Base 3.33% Crit for Druids, Base Hit 3 (From Talents)
-const RACE_STATS = {
-    "Tauren": { hit: 3, crit: 3.33, haste: 0, stam: 72, int: 95 },
-    "NightElf": { hit: 3, crit: 3.33, haste: 1, stam: 69, int: 100 }
+// ============================================================================
+// 3. CONSTANTS & MAPPINGS
+// ============================================================================
 
+// Standard Level-Based Constants (Lvl 60)
+var LEVEL_STATS = {
+    60: { critPerAgi: 0.05, hitCap: 9.0, glancePenalty: 0.35 } 
+    // Note: Turtle might differ slightly, but 0.05% crit per Agi is standard vanilla
 };
 
-// Simulation Object Constructor
-function SimObject(id, name) { this.id = id; this.name = name; this.config = {}; this.results = null; }
+// Energy
+var ENERGY_TICK_RATE = 2.0;
+var ENERGY_PER_TICK = 20;
+
+// Ability Costs (Base)
+var COSTS = {
+    shred: 60,      // -12 with talent
+    claw: 45,       // -5 with talent
+    rake: 40,       // -5 with talent
+    rip: 30,
+    bite: 35,
+    tigersfury: 30,
+    faeriefire: 0,  // In Form
+    shift: 400      // Mana Cost estimate
+};
+
+// Turtle WoW Specifics
+// "Open Wounds": Rake increases Claw damage. 
+// Values need to be calibrated in Engine based on latest patch data.
