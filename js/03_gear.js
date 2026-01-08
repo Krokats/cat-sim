@@ -18,8 +18,8 @@ async function loadDatabase() {
         // Falls du sie lokal testest, stelle sicher, dass ein lokaler Server läuft oder die Dateien erreichbar sind.
         // Wir nehmen an, die JSONs sind sauber formatiert wie im Moonkin-Sim.
         const [rItems, rEnchants] = await Promise.all([
-            fetch('items.json'),
-            fetch('enchants.json')
+            fetch('data/items.json'),
+            fetch('data/enchants.json')
         ]);
 
         if (!rItems.ok) throw new Error("Items DB Error " + rItems.status);
