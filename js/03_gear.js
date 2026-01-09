@@ -29,16 +29,19 @@ async function loadDatabase() {
         ITEM_DB = items.filter(i => {
             // FIX: Some JSONs use 'level', some 'itemLevel'
             i.itemLevel = i.level || i.itemLevel || 0;
+            
             // Filter Junk
             if ((i.quality || 0) < 2) return false;
-            // Allow low level idols, otherwise filter low level gear
-            if (i.itemLevel < 35 && i.slot !== "Idol" && i.slot !== "Relic") return false;
+            
+            // Allow Idols, otherwise filter low level gear
+            if (i.itemLevel < 30 && i.slot !== "Idol" && i.slot !== "Relic") return false;
 
             // CLASS FILTER: 512 = Druid
             if (i.allowableClasses && i.allowableClasses !== -1 && (i.allowableClasses & 512) === 0) return false;
 
-            // ARMOR FILTER: Leather(2), Cloth(1), None(0) - No Mail/Plate
+            // ARMOR FILTER: Leather(2), Cloth(1), None(0) - No Mail(3)/Plate(4)
             if (i.armorType && i.armorType > 2) return false;
+            
             return true;
         });
 
@@ -75,7 +78,7 @@ function initGearPlannerUI() {
 function getIconUrl(iconName) {
     if (!iconName) return "https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg";
     var cleanName = iconName.replace(/\\/g, "/").split("/").pop().replace(/\.jpg|\.png/g, "").toLowerCase();
-    // Use local folder
+    // Use local folder or CDN
     return "data/wow-icons/" + cleanName + ".jpg";
 }
 
@@ -112,7 +115,7 @@ function renderSlotColumn(pos, containerId) {
             rarityClass = "q" + (item.quality || 1);
             displayName = item.name;
             var s = calculateItemScore(item, slotName);
-            statText = "Score: " + s.toFixed(1) + " | iLvl: " + item.itemLevel;
+            statText = "Score: " + s.toFixed(1);
 
             // LINK BUTTON LOGIC
             if (item.url) {
@@ -122,7 +125,10 @@ function renderSlotColumn(pos, containerId) {
 
         // --- ENCHANT RENDER LOGIC ---
         var canEnchant = true;
-        if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off") || slotName.includes("Finger")) canEnchant = false;
+        if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Finger")) canEnchant = false;
+        // Offhand can be enchanted if not held in offhand (Shield), but druids usually use Held In Offhand which can't be enchanted, or Weapons which can.
+        // Simplified:
+        if (slotName === "Off Hand" && item && item.slot === "Held In Off-hand") canEnchant = false;
 
         var enchantHtml = "";
         if (canEnchant) {
@@ -237,7 +243,7 @@ function showTooltip(e, item) {
                 if (bonusData.attackPower > 0) descriptions.push("Increases attack power by " + bonusData.attackPower + ".");
                 if (bonusData.crit > 0) descriptions.push("Improves critical strike chance by " + bonusData.crit + "%.");
                 if (bonusData.hit > 0) descriptions.push("Improves hit chance by " + bonusData.hit + "%.");
-                if (bonusData.energyReturn) descriptions.push("Restores energy when shifting."); // Specific for Wolfshead logic if handled via Set
+                if (bonusData.energyReturn) descriptions.push("Restores energy when shifting."); 
                 
                 if (bonusData.custom && Array.isArray(bonusData.custom)) {
                     bonusData.custom.forEach(function (c) { descriptions.push(c); });
@@ -326,16 +332,13 @@ function renderItemList(filterText) {
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
     if (slotKey.includes("Trinket")) slotKey = "Trinket";
-    if (slotKey === "Idol") slotKey = "Relic";
+    if (slotKey === "Idol") slotKey = "Relic"; // Shared DB mostly
 
     var relevantItems = ITEM_DB.filter(function (i) {
         if (CURRENT_SELECTING_SLOT === "Main Hand") {
             // Include Feral Weapons (Staves, Maces, Polearms, Daggers/Fist if compatible)
-            // Typically TwoHand, MainHand, OneHand
-            // Druid weapons: Mace, Staff, Dagger, Fist, Polearm (Turtle)
             var s = i.slot.toLowerCase().replace(/[\s-]/g, "");
             if (s !== "mainhand" && s !== "onehand" && s !== "twohand") return false;
-            // Filter by Druid weapon types if needed, simplified here by assuming ITEM_DB is filtered
             return true; 
         }
 
@@ -344,7 +347,8 @@ function renderItemList(filterText) {
         if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id) return false;
 
-        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Offhand" || i.slot === "Shield" || i.slot === "Held In Off-hand"); // Druids can hold items
+        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Offhand" || i.slot === "Shield" || i.slot === "Held In Off-hand"); 
+        
         return i.slot === slotKey;
     });
 
@@ -427,7 +431,6 @@ function renderEnchantList() {
         
         // Slot Filter logic
         if (CURRENT_SELECTING_SLOT === "Main Hand") return (e.slot === "Weapon" || e.slot === "Two Hand");
-        if (CURRENT_SELECTING_SLOT.includes("Finger")) return false; // Usually no finger enchants in Vanilla, but Turtle? Assuming none for now.
         return e.slot === CURRENT_SELECTING_SLOT || e.slot === slotKey;
     });
 
@@ -466,12 +469,13 @@ function recalcItemScores() {
 
 function calculateItemScore(item, slotNameOverride) {
     if (!item) return 0;
-    // Weights from UI
-    var wAP = parseFloat(document.getElementById("weight_ap") ? document.getElementById("weight_ap").value : 1.0);
-    var wCrit = parseFloat(document.getElementById("weight_crit") ? document.getElementById("weight_crit").value : 15.0);
-    var wHit = parseFloat(document.getElementById("weight_hit") ? document.getElementById("weight_hit").value : 12.0);
-    var wStr = parseFloat(document.getElementById("weight_str") ? document.getElementById("weight_str").value : 2.0); // 1 Str = 2 AP
-    var wAgi = parseFloat(document.getElementById("weight_agi") ? document.getElementById("weight_agi").value : 2.0); // 1 Agi = 1 AP + Crit
+    // Dynamic Weights from Inputs
+    var wAP = getVal("weight_ap") || 1.0;
+    var wCrit = getVal("weight_crit") || 20.0;
+    var wHit = getVal("weight_hit") || 18.0;
+    var wStr = getVal("weight_str") || 2.0;
+    var wAgi = getVal("weight_agi") || 2.2;
+    var wHaste = getVal("weight_haste") || 10.0;
 
     var score = 0;
     var e = item.effects || {};
@@ -489,9 +493,9 @@ function calculateItemScore(item, slotNameOverride) {
     score += ap * wAP;
     score += hit * wHit;
     score += crit * wCrit;
-    score += haste * 10; // Rough weight for haste
+    score += haste * wHaste;
 
-    // Set Bonus Logic (Simplified count check)
+    // Set Bonus Logic
     if (item.setName) {
         var currentSlot = slotNameOverride || CURRENT_SELECTING_SLOT;
         var otherSetItemsCount = 0;
@@ -512,6 +516,7 @@ function calculateItemScore(item, slotNameOverride) {
                      score += (b.attackPower || 0) * wAP;
                      score += (b.crit || 0) * wCrit;
                      score += (b.hit || 0) * wHit;
+                     score += (b.haste || 0) * wHaste;
                  }
              });
         }
@@ -521,10 +526,12 @@ function calculateItemScore(item, slotNameOverride) {
 
 function calculateEnchantScore(ench) {
     if (!ench) return 0;
-    var wAP = parseFloat(document.getElementById("weight_ap") ? document.getElementById("weight_ap").value : 1.0);
-    var wCrit = parseFloat(document.getElementById("weight_crit") ? document.getElementById("weight_crit").value : 15.0);
-    var wStr = parseFloat(document.getElementById("weight_str") ? document.getElementById("weight_str").value : 2.0);
-    var wAgi = parseFloat(document.getElementById("weight_agi") ? document.getElementById("weight_agi").value : 2.0);
+    var wAP = getVal("weight_ap") || 1.0;
+    var wCrit = getVal("weight_crit") || 20.0;
+    var wStr = getVal("weight_str") || 2.0;
+    var wAgi = getVal("weight_agi") || 2.2;
+    var wHit = getVal("weight_hit") || 18.0;
+    var wHaste = getVal("weight_haste") || 10.0;
 
     var score = 0;
     var e = ench.effects || {};
@@ -532,6 +539,8 @@ function calculateEnchantScore(ench) {
     score += (e.agility || 0) * wAgi;
     score += (e.attackPower || 0) * wAP;
     score += (e.crit || 0) * wCrit;
+    score += (e.hit || 0) * wHit;
+    score += (e.haste || 0) * wHaste;
     
     return score;
 }
@@ -625,13 +634,12 @@ function calculateGearStats() {
     }
 
     // --- BUFFS ---
-    // Flat Adds
     if (getVal("buff_motw")) { stats.str += 16; stats.agi += 16; stats.int += 16; stats.stam += 16; }
     if (getVal("buff_blessing_might")) { stats.ap += 185; }
     if (getVal("buff_trueshot")) { stats.ap += 100; }
-    if (getVal("buff_str_scroll")) { stats.str += 20; } // Scroll IV
+    if (getVal("buff_str_scroll")) { stats.str += 20; } 
     if (getVal("buff_agi_scroll")) { stats.agi += 20; }
-    if (getVal("buff_food")) { stats.str += 20; } // Smoked Desert Dumplings
+    if (getVal("buff_food")) { stats.str += 20; } 
     if (getVal("buff_juju_power")) { stats.str += 30; }
     if (getVal("buff_juju_might")) { stats.ap += 40; }
     if (getVal("buff_mongoose")) { stats.agi += 25; stats.crit += 2; }
@@ -682,7 +690,8 @@ function calculateGearStats() {
     updateInput("stat_int", stats.int, false);
     updateInput("stat_mana", stats.mana, false);
 
-    // Update Gear Planner Preview
+    // Note: GP stats preview text update is handled in UI file or HTML binding usually,
+    // but we can enforce it here if elements exist.
     setText("gp_ap", Math.floor(stats.ap));
     setText("gp_crit", stats.crit.toFixed(2) + "%");
     setText("gp_hit", stats.hit.toFixed(2) + "%");

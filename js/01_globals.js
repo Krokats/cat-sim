@@ -22,8 +22,8 @@ var CONFIG_IDS = [
     "maxTime", "simCount", "calcMethod",
     
     // Player Stats (Manual / Overrides)
-    "stat_str", "stat_agi", "stat_ap", "stat_crit", "stat_hit", "stat_haste", "stat_wps", // wps = weapon damage per second (base)
-    "stat_int", "stat_mana", // For Powershifting
+    "stat_str", "stat_agi", "stat_ap", "stat_crit", "stat_hit", "stat_haste", "stat_wps", 
+    "stat_int", "stat_mana", 
     "manual_stats", "char_race",
     
     // Enemy
@@ -31,7 +31,7 @@ var CONFIG_IDS = [
     
     // Rotation & Tactics
     "pos_behind", "use_rake", "use_bite", "use_powershift", "aggressive_shift",
-    "energy_refund_chance", // Wolfshead + Furor total energy return
+    "energy_refund_chance", 
     
     // Consumables / Buffs
     "buff_motw", "buff_bok", "buff_blessing_might", "buff_trueshot",
@@ -39,7 +39,7 @@ var CONFIG_IDS = [
     "buff_food", "buff_juju_power", "buff_juju_might",
     "buff_mongoose", "buff_giants", "buff_winterfall", "buff_leader",
     
-    // Weights
+    // Input Weights (for Gear Score)
     "weight_ap", "weight_crit", "weight_hit", "weight_str", "weight_agi", "weight_haste"
 ];
 
@@ -51,8 +51,8 @@ var SLOT_LAYOUT = {
 
 // Base Stats (Level 60 Druid - Turtle/Vanilla Hybrid approximations)
 const RACE_STATS = {
-    "Tauren": { str: 85, agi: 55, stam: 82, int: 75, spirit: 82, hit: 0, crit: 0 }, // Higher Base HP/Str
-    "NightElf": { str: 75, agi: 75, stam: 79, int: 80, spirit: 80, hit: 0, crit: 1.0 } // 1% Dodge/Crit base diff
+    "Tauren": { str: 85, agi: 55, stam: 82, int: 75, spirit: 82, hit: 0, crit: 0 }, 
+    "NightElf": { str: 75, agi: 75, stam: 79, int: 80, spirit: 80, hit: 0, crit: 1.0 } 
 };
 
 // Simulation Object Constructor

@@ -5,9 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krokat's Feral Sim (Turtle)</title>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 </head>
@@ -27,16 +30,15 @@
     </div>
 
     <div class="app-layout">
-        <nav class="sidebar" id="sidebar">
-            <div class="sidebar-btn active">1</div>
-        </nav>
+        
+        <nav class="sidebar" id="sidebar"></nav>
 
         <main class="main-content">
             <div class="container">
                 
                 <header>
                     <div class="header-title-row">
-                        <div class="header-avatar" style="background-image: url('https://wow.zamimg.com/images/wow/icons/large/ability_druid_catform.jpg');"></div>
+                        <div class="header-avatar" style="background-image: url('Krokat.png');"></div>
                         <div>
                             <h1>Krokat's Feral Sim</h1>
                             <div class="subtitle">Turtle WoW Patch 1.17.2 | Cat DPS</div>
@@ -62,8 +64,7 @@
                         <div class="modal-search">
                             <input type="text" id="itemSearchInput" placeholder="Search item..." onkeyup="filterItemList()">
                         </div>
-                        <div class="modal-list" id="modalItemList">
-                            </div>
+                        <div class="modal-list" id="modalItemList"></div>
                     </div>
                 </div>
 
@@ -73,228 +74,227 @@
                             <span class="modal-title">Select Enchant</span>
                             <span class="modal-close" onclick="closeEnchantModal()">×</span>
                         </div>
-                        <div class="modal-list" id="modalEnchantList">
-                            </div>
+                        <div class="modal-list" id="modalEnchantList"></div>
                     </div>
                 </div>
 
                 <div id="wowTooltip" class="wow-tooltip"></div>
 
                 <div id="singleSimView">
-                    <div class="grid-container">
+                    
+                    <div class="grid-container-custom">
+                        
+                        <div class="grid-col">
+                            
+                            <div class="card">
+                                <div class="card-header clickable" onclick="toggleCard(this.querySelector('h2'))">
+                                    <h2>🛡️ Gear Planner</h2>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="char-sheet">
+                                        <div class="char-left" id="charLeftCol"></div>
+                                        
+                                        <div class="char-middle">
+                                            <div class="char-race-selector">
+                                                <select id="char_race">
+                                                    <option value="Tauren">Tauren</option>
+                                                    <option value="NightElf">Night Elf</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div class="stat-weights-input-box">
+                                                <h4>Item Score Weights</h4>
+                                                <div class="mini-grid">
+                                                    <div><label>AP</label><input type="number" id="weight_ap" value="1.0"></div>
+                                                    <div><label>Str</label><input type="number" id="weight_str" value="2.0"></div>
+                                                    <div><label>Agi</label><input type="number" id="weight_agi" value="2.2"></div>
+                                                    <div><label>Crit</label><input type="number" id="weight_crit" value="20.0"></div>
+                                                    <div><label>Hit</label><input type="number" id="weight_hit" value="18.0"></div>
+                                                    <div><label>Haste</label><input type="number" id="weight_haste" value="10.0"></div>
+                                                </div>
+                                            </div>
 
-                        <div class="card full-width">
-                            <div class="card-header clickable" onclick="toggleCard(this.querySelector('h2'))">
-                                <h2>🛡️ Gear & Stats</h2>
-                                <span class="toggle-icon">▼</span>
+                                            <div style="text-align:center; margin-top:10px; font-size:0.7rem; color:#666;">
+                                                <div id="dbStatus">DB Loading...</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="char-right" id="charRightCol"></div>
+                                    </div>
+                                    
+                                    <div class="char-bottom" id="charBottomRow"></div>
+                                    
+                                    <hr class="separator">
+                                    <h3>Current Stats (Buffed)</h3>
+                                    <div class="stats-input-grid">
+                                        <div class="input-wrapper"><label>Str</label><input type="number" id="stat_str" disabled></div>
+                                        <div class="input-wrapper"><label>Agi</label><input type="number" id="stat_agi" disabled></div>
+                                        <div class="input-wrapper"><label>Int</label><input type="number" id="stat_int" disabled></div>
+                                        
+                                        <div class="input-wrapper"><label>AP</label><input type="number" id="stat_ap" disabled></div>
+                                        <div class="input-wrapper"><label>Crit %</label><input type="number" id="stat_crit" disabled></div>
+                                        <div class="input-wrapper"><label>Hit %</label><input type="number" id="stat_hit" disabled></div>
+                                        
+                                        <div class="input-wrapper"><label>Haste %</label><input type="number" id="stat_haste" disabled></div>
+                                        <div class="input-wrapper"><label>Mana</label><input type="number" id="stat_mana" disabled></div>
+                                        <div class="input-wrapper" style="display:flex; align-items:flex-end; justify-content:center;">
+                                            <label class="toggle">
+                                                <input type="checkbox" id="manual_stats">
+                                                <span class="slider"></span>
+                                                <span class="label-text" style="font-size:0.7rem;">Edit</span>
+                                            </label>
+                                        </div>
+                                        <div class="input-wrapper hidden"><input type="number" id="stat_wps"></div> </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="char-sheet">
-                                    <div class="char-left" id="charLeftCol"></div>
-                                    <div class="char-middle">
-                                        <div class="char-race-selector">
-                                            <select id="char_race">
-                                                <option value="Tauren">Tauren</option>
-                                                <option value="NightElf">Night Elf</option>
-                                            </select>
+
+                            <div class="card">
+                                <div class="card-header clickable" onclick="toggleCard(this.querySelector('h2'))">
+                                    <h2>✨ Buffs & Potions</h2>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="buff-grid">
+                                        <div class="buff-col">
+                                            <h3>Class</h3>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_motw" checked><span class="checkmark"></span> MotW</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_bok" checked><span class="checkmark"></span> Kings</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_blessing_might" checked><span class="checkmark"></span> Might</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_trueshot"><span class="checkmark"></span> Trueshot</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_leader" checked><span class="checkmark"></span> LotP</label>
                                         </div>
-                                        <div class="gp-stats-preview">
-                                            <div class="stat-row"><span>Attack Power</span> <span id="gp_ap" class="val-orange">0</span></div>
-                                            <div class="stat-row"><span>Crit Chance</span> <span id="gp_crit" class="val-orange">0%</span></div>
-                                            <div class="stat-row"><span>Hit Chance</span> <span id="gp_hit" class="val-orange">0%</span></div>
+                                        <div class="buff-col">
+                                            <h3>Consumes</h3>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_food" checked><span class="checkmark"></span> Food</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_mongoose" checked><span class="checkmark"></span> Mongoose</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_juju_power"><span class="checkmark"></span> Juju Str</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_juju_might"><span class="checkmark"></span> Juju AP</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_giants"><span class="checkmark"></span> Giants</label>
                                         </div>
-                                        <div style="text-align:center; margin-top:10px; font-size:0.7rem; color:#666;">
-                                            <div id="dbStatus">DB Loading...</div>
+                                        <div class="buff-col">
+                                            <h3>World</h3>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_str_scroll"><span class="checkmark"></span> Scroll Str</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_agi_scroll"><span class="checkmark"></span> Scroll Agi</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_winterfall"><span class="checkmark"></span> Firewater</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_kings"><span class="checkmark"></span> W. Kings</label>
                                         </div>
                                     </div>
-                                    <div class="char-right" id="charRightCol"></div>
                                 </div>
-                                <div class="char-bottom" id="charBottomRow"></div>
                             </div>
-                        </div>
 
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>⚙️ Settings</h2>
-                            </div>
-                            <div class="card-body">
-                                <div class="input-group">
-                                    <label>Fight Duration (s)</label>
-                                    <input type="number" id="maxTime" value="120">
+                        </div> <div class="grid-col">
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2>⚙️ Settings</h2>
                                 </div>
-                                <div class="input-group">
-                                    <label>Iterations</label>
-                                    <input type="number" id="simCount" value="1000">
-                                </div>
-                                <div class="input-group">
-                                    <label>Calculation Method</label>
-                                    <select id="calcMethod">
-                                        <option value="S">Simulation (RNG)</option>
+                                <div class="card-body">
+                                    <div class="input-group">
+                                        <label>Duration (seconds)</label>
+                                        <input type="number" id="maxTime" value="120">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Iterations</label>
+                                        <input type="number" id="simCount" value="1000">
+                                    </div>
+                                    <div class="input-group hidden">
+                                        <select id="calcMethod"><option value="S">Sim</option></select>
+                                    </div>
+                                    
+                                    <hr class="separator">
+                                    <h3>Target (Boss)</h3>
+                                    <div class="input-group">
+                                        <label>Target Level</label>
+                                        <select id="enemy_level">
+                                            <option value="63" selected>63 (Boss)</option>
+                                            <option value="60">60</option>
                                         </select>
-                                </div>
-
-                                <hr class="separator">
-                                <h3>Enemy Properties</h3>
-                                
-                                <div class="input-group">
-                                    <label>Target Level</label>
-                                    <select id="enemy_level">
-                                        <option value="60">60</option>
-                                        <option value="61">61</option>
-                                        <option value="62">62</option>
-                                        <option value="63" selected>63 (Boss)</option>
-                                    </select>
-                                </div>
-
-                                <div class="input-group">
-                                    <label>Armor</label>
-                                    <input type="number" id="enemy_armor" value="3731">
-                                </div>
-                                <div class="stat-row-small" id="info_dr">DR: 0%</div>
-
-                                <div class="toggle-wrapper" style="margin-top:10px;">
-                                    <label class="toggle">
-                                        <input type="checkbox" id="enemy_can_bleed" checked>
-                                        <span class="slider"></span>
-                                        <span class="label-text">Can Bleed (Not Mech/Ele)</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>⚔️ Rotation</h2>
-                            </div>
-                            <div class="card-body">
-                                <div class="toggle-grid">
-                                    <label class="toggle">
-                                        <input type="checkbox" id="pos_behind" checked>
-                                        <span class="slider"></span>
-                                        <span class="label-text">Position: Behind (Shred)</span>
-                                    </label>
-
-                                    <label class="toggle">
-                                        <input type="checkbox" id="use_rake" checked>
-                                        <span class="slider"></span>
-                                        <span class="label-text">Use Rake (Open Wounds)</span>
-                                    </label>
-
-                                    <label class="toggle">
-                                        <input type="checkbox" id="use_bite" checked>
-                                        <span class="slider"></span>
-                                        <span class="label-text">Use Bite (5 CP)</span>
-                                    </label>
-
-                                    <hr class="separator" style="width:100%; margin: 10px 0;">
-
-                                    <label class="toggle">
-                                        <input type="checkbox" id="use_powershift" checked>
-                                        <span class="slider"></span>
-                                        <span class="label-text">Use Powershifting</span>
-                                    </label>
-
-                                    <label class="toggle">
-                                        <input type="checkbox" id="aggressive_shift">
-                                        <span class="slider"></span>
-                                        <span class="label-text">Aggressive Shift (No Wait)</span>
-                                    </label>
-                                </div>
-
-                                <div class="input-group" style="margin-top:15px;">
-                                    <label>Shift Energy Return (Talent + Helm)</label>
-                                    <input type="number" id="energy_refund_chance" value="60" title="Furor(40) + Wolfshead(20) = 60">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card full-width">
-                            <div class="card-header clickable" onclick="toggleCard(this.querySelector('h2'))">
-                                <h2>✨ Buffs & Consumables</h2>
-                                <span class="toggle-icon">▼</span>
-                            </div>
-                            <div class="card-body collapsed-content">
-                                <div class="buff-grid">
-                                    <div class="buff-col">
-                                        <h3>Class Buffs</h3>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_motw" checked><span class="checkmark"></span> Mark of the Wild</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_bok" checked><span class="checkmark"></span> Blessing of Kings</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_blessing_might" checked><span class="checkmark"></span> Blessing of Might</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_trueshot"><span class="checkmark"></span> Trueshot Aura</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_leader" checked><span class="checkmark"></span> LotP (Aura)</label>
                                     </div>
-                                    <div class="buff-col">
-                                        <h3>Consumables</h3>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_food" checked><span class="checkmark"></span> Food (Str/Agi)</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_mongoose" checked><span class="checkmark"></span> Elixir of Mongoose</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_giants"><span class="checkmark"></span> Elixir of Giants</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_juju_power"><span class="checkmark"></span> Juju Power</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_juju_might"><span class="checkmark"></span> Juju Might</label>
+                                    <div class="input-group">
+                                        <label>Armor</label>
+                                        <input type="number" id="enemy_armor" value="3731">
                                     </div>
-                                    <div class="buff-col">
-                                        <h3>Scrolls / World</h3>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_str_scroll"><span class="checkmark"></span> Scroll of Strength IV</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_agi_scroll"><span class="checkmark"></span> Scroll of Agility IV</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_winterfall"><span class="checkmark"></span> Winterfall Firewater</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="buff_kings"><span class="checkmark"></span> Kings (World/Item)</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card full-width">
-                            <div class="card-header">
-                                <div class="header-split">
-                                    <h2>📊 Player Stats (Calculated)</h2>
-                                    <label class="toggle">
-                                        <input type="checkbox" id="manual_stats">
-                                        <span class="slider"></span>
-                                        <span class="label-text">Manual Override</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="stats-input-grid">
-                                    <div class="input-wrapper"><label>Strength</label><input type="number" id="stat_str"></div>
-                                    <div class="input-wrapper"><label>Agility</label><input type="number" id="stat_agi"></div>
-                                    <div class="input-wrapper"><label>Intellect</label><input type="number" id="stat_int"></div>
+                                    <div class="stat-row-small" id="info_dr">DR: 0%</div>
                                     
-                                    <div class="input-wrapper"><label>Attack Power</label><input type="number" id="stat_ap"></div>
-                                    <div class="input-wrapper"><label>Crit %</label><input type="number" id="stat_crit"></div>
-                                    <div class="input-wrapper"><label>Hit %</label><input type="number" id="stat_hit"></div>
-                                    
-                                    <div class="input-wrapper"><label>Haste %</label><input type="number" id="stat_haste"></div>
-                                    <div class="input-wrapper"><label>Weapon DPS</label><input type="number" id="stat_wps"></div>
-                                    <div class="input-wrapper"><label>Mana Pool</label><input type="number" id="stat_mana"></div>
-                                </div>
-
-                                <hr class="separator">
-                                <div class="collapsed-section-toggle" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                                    <span>Stat Weights (For Gear Score) ▼</span>
-                                </div>
-                                <div class="hidden weights-container">
-                                    <div class="input-wrapper"><label>AP Weight</label><input type="number" id="weight_ap" value="1.0"></div>
-                                    <div class="input-wrapper"><label>Str Weight</label><input type="number" id="weight_str" value="2.0"></div>
-                                    <div class="input-wrapper"><label>Agi Weight</label><input type="number" id="weight_agi" value="2.2"></div>
-                                    <div class="input-wrapper"><label>Crit Weight</label><input type="number" id="weight_crit" value="20.0"></div>
-                                    <div class="input-wrapper"><label>Hit Weight</label><input type="number" id="weight_hit" value="18.0"></div>
-                                    <div class="input-wrapper"><label>Haste Weight</label><input type="number" id="weight_haste" value="10.0"></div>
+                                    <div class="toggle-wrapper" style="margin-top:10px;">
+                                        <label class="toggle">
+                                            <input type="checkbox" id="enemy_can_bleed" checked>
+                                            <span class="slider"></span>
+                                            <span class="label-text">Can Bleed</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                    </div> <div class="action-bar">
+                            <div class="cat-visual-card">
+                                <img src="https://wow.zamimg.com/uploads/screenshots/normal/119207-cat-form-night-elf.jpg" alt="Feral Cat">
+                                <div class="cat-overlay-text">Feral Druid</div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2>⚔️ Rotation</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="toggle-grid">
+                                        <label class="toggle">
+                                            <input type="checkbox" id="pos_behind" checked>
+                                            <span class="slider"></span>
+                                            <span class="label-text">Position: Behind (Shred)</span>
+                                        </label>
+
+                                        <label class="toggle">
+                                            <input type="checkbox" id="use_rake" checked>
+                                            <span class="slider"></span>
+                                            <span class="label-text">Use Rake (Open Wounds)</span>
+                                        </label>
+
+                                        <label class="toggle">
+                                            <input type="checkbox" id="use_bite" checked>
+                                            <span class="slider"></span>
+                                            <span class="label-text">Use Bite (at 5 CP)</span>
+                                        </label>
+
+                                        <hr class="separator" style="width:100%; margin: 5px 0;">
+
+                                        <label class="toggle">
+                                            <input type="checkbox" id="use_powershift" checked>
+                                            <span class="slider"></span>
+                                            <span class="label-text">Use Powershift</span>
+                                        </label>
+
+                                        <label class="toggle">
+                                            <input type="checkbox" id="aggressive_shift">
+                                            <span class="slider"></span>
+                                            <span class="label-text">Aggressive Shift (No Wait)</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="input-group" style="margin-top:10px;">
+                                        <label>Shift Energy Refund (Talent+Helm)</label>
+                                        <input type="number" id="energy_refund_chance" value="60">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div> </div> <div class="action-bar">
                         <button class="run-btn" onclick="runSimulation()">
                             <span class="run-icon">⚔️</span> RUN SIMULATION
                         </button>
+                        
+                        <button class="weight-btn" onclick="runStatWeights()">
+                            ⚖️ STAT WEIGHTS
+                        </button>
                     </div>
 
-                    <div id="resultsArea" class="hidden">
+
+                    <div id="resultsArea">
                         <div class="card full-width">
                             <div class="card-header">
                                 <h2>📈 Simulation Results</h2>
                                 <div class="view-controls">
-                                    <button class="view-btn active" id="viewAvg" onclick="switchView('avg')">Average</button>
+                                    <button class="view-btn active" id="viewAvg" onclick="switchView('avg')">Avg</button>
                                     <button class="view-btn" id="viewMin" onclick="switchView('min')">Min</button>
                                     <button class="view-btn" id="viewMax" onclick="switchView('max')">Max</button>
                                 </div>
@@ -304,19 +304,31 @@
                                 <div class="result-highlight-grid">
                                     <div class="res-box">
                                         <span class="res-label">DPS</span>
-                                        <span class="res-val big" id="out_dps_main">0</span>
+                                        <span class="res-val big" id="out_dps_main">-</span>
                                     </div>
                                     <div class="res-box">
                                         <span class="res-label">Total Damage</span>
-                                        <span class="res-val" id="out_total_dmg">0</span>
+                                        <span class="res-val" id="out_total_dmg">-</span>
                                     </div>
                                     <div class="res-box">
                                         <span class="res-label">Powershifts</span>
-                                        <span class="res-val" id="out_shifts">0</span>
+                                        <span class="res-val" id="out_shifts">-</span>
                                     </div>
                                     <div class="res-box">
                                         <span class="res-label">Wasted CP</span>
-                                        <span class="res-val" id="out_cp_waste">0</span>
+                                        <span class="res-val" id="out_cp_waste">-</span>
+                                    </div>
+                                </div>
+
+                                <div class="weights-result-box">
+                                    <h3>Calculated Stat Weights (EP Values)</h3>
+                                    <div class="weights-grid-display">
+                                        <div class="w-item"><span>AP</span><span class="w-val" id="res_weight_ap">-</span></div>
+                                        <div class="w-item"><span>Str</span><span class="w-val" id="res_weight_str">-</span></div>
+                                        <div class="w-item"><span>Agi</span><span class="w-val" id="res_weight_agi">-</span></div>
+                                        <div class="w-item"><span>Crit</span><span class="w-val" id="res_weight_crit">-</span></div>
+                                        <div class="w-item"><span>Hit</span><span class="w-val" id="res_weight_hit">-</span></div>
+                                        <div class="w-item"><span>Haste</span><span class="w-val" id="res_weight_haste">-</span></div>
                                     </div>
                                 </div>
 
@@ -331,116 +343,44 @@
                                             </tr>
                                         </thead>
                                         <tbody id="tbl_body">
-                                            </tbody>
+                                            <tr><td colspan="4" class="text-center muted">No simulation run yet.</td></tr>
+                                        </tbody>
                                     </table>
                                 </div>
 
                                 <div class="log-controls">
-                                    <h3>Combat Log Sample (First Iteration/Min)</h3>
-                                    <button class="small-btn" onclick="exportCSV()">Download CSV</button>
+                                    <h3>Combat Log (Detailed)</h3>
                                 </div>
                                 <div class="log-container">
                                     <table class="log-table">
                                         <thead>
                                             <tr>
                                                 <th>Time</th>
-                                                <th>Source</th>
-                                                <th>Event</th>
-                                                <th>Result</th>
-                                                <th>Amount</th>
-                                                <th>Energy</th>
+                                                <th>Src</th>
+                                                <th>Evt</th>
+                                                <th>Res</th>
+                                                <th>Amt</th>
+                                                <th title="Energy">E</th>
                                                 <th>CP</th>
                                                 <th>Mana</th>
+                                                <th>Info</th>
                                             </tr>
                                         </thead>
                                         <tbody id="logBody">
-                                            </tbody>
+                                            <tr><td colspan="9" class="text-center muted">No log available.</td></tr>
+                                        </tbody>
                                     </table>
                                 </div>
-                                
-                                <div style="text-align:right; margin-top:10px;">
-                                    <button class="small-btn" onclick="generateSummaryImage()">📸 Create Summary Image</button>
-                                </div>
 
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="comparisonView" class="hidden">
-                    <div class="card full-width">
-                        <div class="card-header">
-                            <h2>📊 Simulation Comparison</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-container">
-                                <table class="comp-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Time</th>
-                                            <th>AP</th>
-                                            <th>Crit</th>
-                                            <th>Hit</th>
-                                            <th>Rotation</th>
-                                            <th style="text-align:right">Min DPS</th>
-                                            <th style="text-align:right">Avg DPS</th>
-                                            <th style="text-align:right">Max DPS</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="comparisonBody">
-                                        </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                <div id="comparisonView" class="hidden"></div>
+                
             </div>
         </main>
-    </div>
-
-    <div id="summaryCardWrapper" style="position:absolute; left:-9999px; top:0;">
-        <div id="summaryCard" class="summary-card">
-            <div class="sum-header">
-                <div class="sum-title">Feral Druid Simulation</div>
-                <div class="sum-subtitle" id="sumSimName">Sim Name</div>
-                <div class="sum-date" id="sumDate">Date</div>
-            </div>
-            <div class="sum-body">
-                <div class="sum-col">
-                    <div class="sum-big-stat">
-                        <span class="sum-dps-label">Average DPS</span>
-                        <span class="sum-dps-val" id="sumAvg">0</span>
-                    </div>
-                    <div class="sum-small-stats">
-                        <div>Min: <span id="sumMin">0</span></div>
-                        <div>Max: <span id="sumMax">0</span></div>
-                        <div>Duration: <span id="sumTime">0s</span></div>
-                    </div>
-                    
-                    <div class="sum-sec-title">Stats</div>
-                    <div class="sum-row"><span>AP</span> <span id="sumAP">0</span></div>
-                    <div class="sum-row"><span>Crit</span> <span id="sumCrit">0%</span></div>
-                    <div class="sum-row"><span>Hit</span> <span id="sumHit">0%</span></div>
-                    <div class="sum-row"><span>Haste</span> <span id="sumHaste">0%</span></div>
-                    
-                    <div class="sum-sec-title" style="margin-top:15px;">Enemy</div>
-                    <div class="sum-row"><span>Level</span> <span id="sumLvl">63</span></div>
-                    <div class="sum-row"><span>Armor</span> <span id="sumArmor">0</span></div>
-                </div>
-                <div class="sum-col">
-                    <div class="sum-sec-title">Rotation & Tactics</div>
-                    <ul class="sum-list" id="sumRotaList"></ul>
-                </div>
-                <div class="sum-col">
-                    <div class="sum-sec-title">Gear Summary</div>
-                    <ul class="sum-list" id="sumGearList"></ul>
-                </div>
-            </div>
-            <div class="summary-footer">Krokat's Feral Sim (Turtle WoW)</div>
-        </div>
     </div>
 
     <script src="js/01_globals.js"></script>
