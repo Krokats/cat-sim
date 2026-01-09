@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: 04_ui.js
-fullContent:
 /**
  * Feral Simulation - File 4: UI Manager
  * Updated for Turtle WoW 1.18 (Feral Cat)
@@ -602,5 +598,4 @@ function toggleCard(header) {
         body.style.display = "none";
         header.querySelector(".toggle-icon").innerText = "▶";
     }
-}
 }
