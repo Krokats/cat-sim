@@ -8,7 +8,6 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -23,9 +22,7 @@
     <div id="progressOverlay" class="progress-overlay hidden">
         <div class="progress-box">
             <div id="progressText" class="progress-text">Loading...</div>
-            <div class="progress-track">
-                <div id="progressFill" class="progress-fill"></div>
-            </div>
+            <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
         </div>
     </div>
 
@@ -38,7 +35,7 @@
                 
                 <header>
                     <div class="header-title-row">
-                        <div class="header-avatar" style="background-image: url('Krokat.png');"></div>
+                        <img src="Krokat.png" alt="Logo" class="header-logo">
                         <div>
                             <h1>Krokat's Feral Sim</h1>
                             <div class="subtitle">Turtle WoW Patch 1.17.2 | Cat DPS</div>
@@ -57,23 +54,15 @@
 
                 <div id="itemSelectorModal" class="modal-overlay hidden">
                     <div class="modal-box">
-                        <div class="modal-header">
-                            <span class="modal-title">Select Item</span>
-                            <span class="modal-close" onclick="closeItemModal()">×</span>
-                        </div>
-                        <div class="modal-search">
-                            <input type="text" id="itemSearchInput" placeholder="Search item..." onkeyup="filterItemList()">
-                        </div>
+                        <div class="modal-header"><span class="modal-title">Select Item</span><span class="modal-close" onclick="closeItemModal()">×</span></div>
+                        <div class="modal-search"><input type="text" id="itemSearchInput" placeholder="Search item..." onkeyup="filterItemList()"></div>
                         <div class="modal-list" id="modalItemList"></div>
                     </div>
                 </div>
 
                 <div id="enchantSelectorModal" class="modal-overlay hidden">
                     <div class="modal-box small-modal">
-                        <div class="modal-header">
-                            <span class="modal-title">Select Enchant</span>
-                            <span class="modal-close" onclick="closeEnchantModal()">×</span>
-                        </div>
+                        <div class="modal-header"><span class="modal-title">Select Enchant</span><span class="modal-close" onclick="closeEnchantModal()">×</span></div>
                         <div class="modal-list" id="modalEnchantList"></div>
                     </div>
                 </div>
@@ -88,7 +77,7 @@
                             
                             <div class="card">
                                 <div class="card-header clickable" onclick="toggleCard(this.querySelector('h2'))">
-                                    <h2>🛡️ Gear Planner</h2>
+                                    <h2>🛡️ Gear & Stats</h2>
                                     <span class="toggle-icon">▼</span>
                                 </div>
                                 <div class="card-body">
@@ -104,7 +93,7 @@
                                             </div>
                                             
                                             <div class="stat-weights-input-box">
-                                                <h4>Item Score Weights</h4>
+                                                <h4>Stat Weights (Score)</h4>
                                                 <div class="mini-grid">
                                                     <div><label>AP</label><input type="number" id="weight_ap" value="1.0"></div>
                                                     <div><label>Str</label><input type="number" id="weight_str" value="2.0"></div>
@@ -128,16 +117,17 @@
                                     <hr class="separator">
                                     <h3>Current Stats (Buffed)</h3>
                                     <div class="stats-input-grid">
-                                        <div class="input-wrapper"><label>Str</label><input type="number" id="stat_str" disabled></div>
-                                        <div class="input-wrapper"><label>Agi</label><input type="number" id="stat_agi" disabled></div>
-                                        <div class="input-wrapper"><label>Int</label><input type="number" id="stat_int" disabled></div>
+                                        <div class="input-wrapper"><label>Strength</label><input type="number" id="stat_str" disabled></div>
+                                        <div class="input-wrapper"><label>Agility</label><input type="number" id="stat_agi" disabled></div>
+                                        <div class="input-wrapper"><label>Intellect</label><input type="number" id="stat_int" disabled></div>
                                         
-                                        <div class="input-wrapper"><label>AP</label><input type="number" id="stat_ap" disabled></div>
-                                        <div class="input-wrapper"><label>Crit %</label><input type="number" id="stat_crit" disabled></div>
-                                        <div class="input-wrapper"><label>Hit %</label><input type="number" id="stat_hit" disabled></div>
+                                        <div class="input-wrapper"><label>Attack Power</label><input type="number" id="stat_ap" disabled></div>
+                                        <div class="input-wrapper"><label>Crit Chance</label><input type="number" id="stat_crit" disabled></div>
+                                        <div class="input-wrapper"><label>Hit Chance</label><input type="number" id="stat_hit" disabled></div>
                                         
-                                        <div class="input-wrapper"><label>Haste %</label><input type="number" id="stat_haste" disabled></div>
+                                        <div class="input-wrapper"><label>Haste</label><input type="number" id="stat_haste" disabled></div>
                                         <div class="input-wrapper"><label>Mana</label><input type="number" id="stat_mana" disabled></div>
+                                        
                                         <div class="input-wrapper" style="display:flex; align-items:flex-end; justify-content:center;">
                                             <label class="toggle">
                                                 <input type="checkbox" id="manual_stats">
@@ -145,7 +135,8 @@
                                                 <span class="label-text" style="font-size:0.7rem;">Edit</span>
                                             </label>
                                         </div>
-                                        <div class="input-wrapper hidden"><input type="number" id="stat_wps"></div> </div>
+                                        <div class="input-wrapper hidden"><input type="number" id="stat_wps"></div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -157,7 +148,7 @@
                                 <div class="card-body">
                                     <div class="buff-grid">
                                         <div class="buff-col">
-                                            <h3>Class</h3>
+                                            <h3>Class Buffs</h3>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_motw" checked><span class="checkmark"></span> MotW</label>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_bok" checked><span class="checkmark"></span> Kings</label>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_blessing_might" checked><span class="checkmark"></span> Might</label>
@@ -165,19 +156,18 @@
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_leader" checked><span class="checkmark"></span> LotP</label>
                                         </div>
                                         <div class="buff-col">
-                                            <h3>Consumes</h3>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_food" checked><span class="checkmark"></span> Food</label>
+                                            <h3>Consumables</h3>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_food" checked><span class="checkmark"></span> Food (Str/Agi)</label>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_mongoose" checked><span class="checkmark"></span> Mongoose</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_juju_power"><span class="checkmark"></span> Juju Str</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_juju_might"><span class="checkmark"></span> Juju AP</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_juju_power"><span class="checkmark"></span> Juju Power</label>
+                                            <label class="custom-checkbox"><input type="checkbox" id="buff_juju_might"><span class="checkmark"></span> Juju Might</label>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_giants"><span class="checkmark"></span> Giants</label>
                                         </div>
                                         <div class="buff-col">
-                                            <h3>World</h3>
+                                            <h3>World / Scroll</h3>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_str_scroll"><span class="checkmark"></span> Scroll Str</label>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_agi_scroll"><span class="checkmark"></span> Scroll Agi</label>
                                             <label class="custom-checkbox"><input type="checkbox" id="buff_winterfall"><span class="checkmark"></span> Firewater</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_kings"><span class="checkmark"></span> W. Kings</label>
                                         </div>
                                     </div>
                                 </div>
@@ -187,15 +177,15 @@
                             
                             <div class="card">
                                 <div class="card-header">
-                                    <h2>⚙️ Settings</h2>
+                                    <h2>⚙️ General Settings</h2>
                                 </div>
                                 <div class="card-body">
                                     <div class="input-group">
-                                        <label>Duration (seconds)</label>
+                                        <label>Fight Duration (seconds)</label>
                                         <input type="number" id="maxTime" value="120">
                                     </div>
                                     <div class="input-group">
-                                        <label>Iterations</label>
+                                        <label>Sim Iterations</label>
                                         <input type="number" id="simCount" value="1000">
                                     </div>
                                     <div class="input-group hidden">
@@ -203,12 +193,12 @@
                                     </div>
                                     
                                     <hr class="separator">
-                                    <h3>Target (Boss)</h3>
+                                    <h3>Target Properties</h3>
                                     <div class="input-group">
                                         <label>Target Level</label>
                                         <select id="enemy_level">
-                                            <option value="63" selected>63 (Boss)</option>
-                                            <option value="60">60</option>
+                                            <option value="63" selected>Level 63 (Boss)</option>
+                                            <option value="60">Level 60</option>
                                         </select>
                                     </div>
                                     <div class="input-group">
@@ -217,7 +207,7 @@
                                     </div>
                                     <div class="stat-row-small" id="info_dr">DR: 0%</div>
                                     
-                                    <div class="toggle-wrapper" style="margin-top:10px;">
+                                    <div class="toggle-wrapper" style="margin-top:12px;">
                                         <label class="toggle">
                                             <input type="checkbox" id="enemy_can_bleed" checked>
                                             <span class="slider"></span>
@@ -228,51 +218,51 @@
                             </div>
 
                             <div class="cat-visual-card">
-                                <img src="https://wow.zamimg.com/uploads/screenshots/normal/119207-cat-form-night-elf.jpg" alt="Feral Cat">
-                                <div class="cat-overlay-text">Feral Druid</div>
+                                <div class="cat-image-placeholder" style="background-image: url('https://wow.zamimg.com/uploads/screenshots/normal/119207-cat-form-night-elf.jpg');"></div>
+                                <div class="cat-overlay-text">FERAL DRUID</div>
                             </div>
 
                             <div class="card">
                                 <div class="card-header">
-                                    <h2>⚔️ Rotation</h2>
+                                    <h2>⚔️ Rotation Strategy</h2>
                                 </div>
                                 <div class="card-body">
                                     <div class="toggle-grid">
                                         <label class="toggle">
                                             <input type="checkbox" id="pos_behind" checked>
                                             <span class="slider"></span>
-                                            <span class="label-text">Position: Behind (Shred)</span>
+                                            <span class="label-text">Position: Behind (Use Shred)</span>
                                         </label>
 
                                         <label class="toggle">
                                             <input type="checkbox" id="use_rake" checked>
                                             <span class="slider"></span>
-                                            <span class="label-text">Use Rake (Open Wounds)</span>
+                                            <span class="label-text">Use Rake (Maintain Bleed)</span>
                                         </label>
 
                                         <label class="toggle">
                                             <input type="checkbox" id="use_bite" checked>
                                             <span class="slider"></span>
-                                            <span class="label-text">Use Bite (at 5 CP)</span>
+                                            <span class="label-text">Use Ferocious Bite (at 5 CP)</span>
                                         </label>
 
-                                        <hr class="separator" style="width:100%; margin: 5px 0;">
+                                        <hr class="separator" style="margin: 8px 0;">
 
                                         <label class="toggle">
                                             <input type="checkbox" id="use_powershift" checked>
                                             <span class="slider"></span>
-                                            <span class="label-text">Use Powershift</span>
+                                            <span class="label-text">Use Powershifting</span>
                                         </label>
 
                                         <label class="toggle">
                                             <input type="checkbox" id="aggressive_shift">
                                             <span class="slider"></span>
-                                            <span class="label-text">Aggressive Shift (No Wait)</span>
+                                            <span class="label-text">Aggressive Shift (Ignore Ticks)</span>
                                         </label>
                                     </div>
 
-                                    <div class="input-group" style="margin-top:10px;">
-                                        <label>Shift Energy Refund (Talent+Helm)</label>
+                                    <div class="input-group" style="margin-top:15px;">
+                                        <label>Shift Energy Refund (Talent + Wolfshead)</label>
                                         <input type="number" id="energy_refund_chance" value="60">
                                     </div>
                                 </div>
@@ -294,7 +284,7 @@
                             <div class="card-header">
                                 <h2>📈 Simulation Results</h2>
                                 <div class="view-controls">
-                                    <button class="view-btn active" id="viewAvg" onclick="switchView('avg')">Avg</button>
+                                    <button class="view-btn active" id="viewAvg" onclick="switchView('avg')">Average</button>
                                     <button class="view-btn" id="viewMin" onclick="switchView('min')">Min</button>
                                     <button class="view-btn" id="viewMax" onclick="switchView('max')">Max</button>
                                 </div>
@@ -355,15 +345,15 @@
                                     <table class="log-table">
                                         <thead>
                                             <tr>
-                                                <th>Time</th>
-                                                <th>Src</th>
-                                                <th>Evt</th>
-                                                <th>Res</th>
-                                                <th>Amt</th>
-                                                <th title="Energy">E</th>
-                                                <th>CP</th>
-                                                <th>Mana</th>
-                                                <th>Info</th>
+                                                <th style="width:60px;">Time</th>
+                                                <th>Source</th>
+                                                <th>Event</th>
+                                                <th>Result</th>
+                                                <th class="text-right">Amt</th>
+                                                <th class="text-center">Energy</th>
+                                                <th class="text-center">CP</th>
+                                                <th class="text-center">Mana</th>
+                                                <th class="text-left">Info</th>
                                             </tr>
                                         </thead>
                                         <tbody id="logBody">
@@ -375,6 +365,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <div id="comparisonView" class="hidden"></div>
