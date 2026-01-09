@@ -1,10 +1,16 @@
 /**
  * Feral Simulation - File 2: Utilities
+ * DOM Helpers and UI Feedback
  */
 
 // ============================================================================
 // 2. UTILS
 // ============================================================================
+
+/**
+ * Retreives the value of a UI element safely.
+ * Handles Checkboxes (1/0), Selects (String), and Inputs (Float).
+ */
 function getVal(id) {
     var el = document.getElementById(id);
     if (!el) return 0;
@@ -13,11 +19,17 @@ function getVal(id) {
     return parseFloat(el.value) || 0;
 }
 
+/**
+ * Sets text content of an element safely.
+ */
 function setText(id, text) {
     var el = document.getElementById(id);
     if (el) el.innerText = text;
 }
 
+/**
+ * Shows a temporary toast message at the bottom of the screen.
+ */
 function showToast(msg) {
     var t = document.getElementById("toast");
     if (t) {
@@ -28,6 +40,9 @@ function showToast(msg) {
     }
 }
 
+/**
+ * Displays the modal progress overlay with a text message.
+ */
 function showProgress(text) {
     var el = document.getElementById("progressOverlay");
     if (el) {
@@ -38,5 +53,21 @@ function showProgress(text) {
         if (f) f.style.width = "0%";
     }
 }
-function updateProgress(pct) { var el = document.getElementById("progressFill"); if (el) el.style.width = pct + "%"; }
-function hideProgress() { setTimeout(function () { var el = document.getElementById("progressOverlay"); if (el) el.classList.add("hidden"); }, 200); }
+
+/**
+ * Updates the progress bar width inside the overlay.
+ */
+function updateProgress(pct) { 
+    var el = document.getElementById("progressFill"); 
+    if (el) el.style.width = pct + "%"; 
+}
+
+/**
+ * Hides the progress overlay with a slight delay for smooth UI.
+ */
+function hideProgress() { 
+    setTimeout(function () { 
+        var el = document.getElementById("progressOverlay"); 
+        if (el) el.classList.add("hidden"); 
+    }, 200); 
+}

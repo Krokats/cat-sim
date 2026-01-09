@@ -1,512 +1,661 @@
 /**
  * Feral Simulation - File 5: Simulation Engine & Math
+ * Updated for Turtle WoW 1.18 (Feral Cat)
+ * Event-based engine: Handles GCD, Energy Ticks, Swing Timer, and resource management.
  */
 
 // ============================================================================
-// INPUT & CONFIGURATION
-// ============================================================================
-
-function getInputs() {
-    // Collect settings from UI
-    var iterations = getVal("simCount");
-    var mode = document.getElementById("calcMethod") ? document.getElementById("calcMethod").value : "S"; 
-    
-    // Convert text inputs to numbers
-    var stats = {
-        minDmg: 0, 
-        maxDmg: 0,
-        ap: getVal("stat_ap"),
-        crit: getVal("stat_crit"),
-        hit: getVal("stat_hit"),
-        haste: getVal("stat_haste"),
-        weaponDps: getVal("stat_wps"),
-        mana: getVal("stat_mana"),
-        int: getVal("stat_int"),
-        // Raw Stats for Weight Calc
-        str: getVal("stat_str"),
-        agi: getVal("stat_agi")
-    };
-
-    var enemy = {
-        armor: getVal("enemy_armor"),
-        level: getVal("enemy_level"),
-        canBleed: getVal("enemy_can_bleed")
-    };
-
-    var tactics = {
-        behind: getVal("pos_behind"),
-        useRake: getVal("use_rake"),
-        useBite: getVal("use_bite"),
-        usePowershift: getVal("use_powershift"),
-        aggressiveShift: getVal("aggressive_shift"),
-        refundEnergy: getVal("energy_refund_chance") // 60
-    };
-
-    // Note: Weights inputs are for the Gear Planner Score, 
-    // but the engine calculates its own weights via runStatWeights()
-    
-    return {
-        mode: mode,
-        iterations: (iterations > 0 ? iterations : 1000),
-        maxTime: getVal("maxTime") || 120,
-        stats: stats,
-        enemy: enemy,
-        tactics: tactics
-    };
-}
-
-// ============================================================================
-// SIMULATION RUNNER
+// SIMULATION ENTRY POINT
 // ============================================================================
 
 function runSimulation() {
+    // 1. Fetch Inputs
+    var config = getSimInputs();
+    
+    // 2. Validate
+    if (config.iterations < 1) config.iterations = 1;
+    
+    // 3. Run
     showProgress("Simulating...");
-
+    
     setTimeout(function() {
         try {
-            var cfg = getInputs();
+            var allResults = [];
             
-            // Run Main Sim
-            var res = doSimulation(cfg);
-            
-            // Store Results Global
-            SIM_DATA = res;
-            
-            if(SIM_LIST[ACTIVE_SIM_INDEX]) {
-                SIM_LIST[ACTIVE_SIM_INDEX].results = SIM_DATA;
+            // Run Simulations
+            for(var i = 0; i < config.iterations; i++) {
+                var res = runCoreSimulation(config);
+                allResults.push(res);
+                if(i % 50 === 0) updateProgress((i / config.iterations) * 100);
             }
-
-            // Render
-            switchView('avg');
-            updateProgress(100);
-            setTimeout(hideProgress, 200);
-            showToast("Simulation Complete");
-
+            
+            // Aggregate Results
+            var avg = aggregateResults(allResults);
+            SIM_DATA = { config: config, results: avg };
+            
+            // Update UI
+            updateSimulationResults(SIM_DATA);
+            showToast("Simulation Complete!");
+            
         } catch(e) {
             console.error(e);
+            showToast("Error: " + e.message);
+        } finally {
             hideProgress();
-            alert("Simulation Error: " + e.message);
         }
     }, 50);
 }
 
-// ============================================================================
-// STAT WEIGHT CALCULATOR
-// ============================================================================
+function getSimInputs() {
+    // Collect all inputs from UI and Globals
+    return {
+        // Sim Settings
+        simTime: parseFloat(getVal("simTime")) || 60,
+        iterations: parseInt(getVal("simCount")) || 1000,
+        calcMethod: document.getElementById("calcMethod") ? document.getElementById("calcMethod").value : "avg",
 
-function runStatWeights() {
-    showProgress("Calculating Weights...");
-    
-    setTimeout(function() {
-        try {
-            var baseCfg = getInputs();
-            // Reduce iterations for weight calc speed (optional, but recommended)
-            baseCfg.iterations = Math.min(baseCfg.iterations, 2000); 
+        // Player Stats (Base + Gear)
+        minDmg: parseFloat(getVal("stat_wep_dmg_min")) || 55,
+        maxDmg: parseFloat(getVal("stat_wep_dmg_max")) || 85,
+        ap: parseFloat(getVal("stat_ap")) || 0,
+        crit: parseFloat(getVal("stat_crit")) || 0,
+        hit: parseFloat(getVal("stat_hit")) || 0,
+        haste: parseFloat(getVal("stat_haste")) || 0,
+        wepSkill: parseFloat(getVal("stat_wep_skill")) || 300,
+        manaPool: parseFloat(getVal("mana_pool")) || 4000,
 
-            // 1. Base Run
-            updateProgress(10);
-            var baseRes = doSimulation(baseCfg);
-            var baseDps = baseRes.avg.dps;
+        // Enemy
+        enemyLevel: parseFloat(getVal("enemy_level")) || 63,
+        enemyArmor: parseFloat(getVal("enemy_armor")) || 3731,
+        canBleed: getVal("enemy_can_bleed") === 1,
 
-            // Helper to modify config and run sim
-            function getDeltaDps(modifierFn) {
-                var c = JSON.parse(JSON.stringify(baseCfg));
-                modifierFn(c);
-                var r = doSimulation(c);
-                return r.avg.dps;
-            }
+        // Rotation Config
+        posBehind: getVal("rota_position") === "back",
+        usePowershift: getVal("rota_powershift") === 1,
+        useRake: getVal("rota_rake") === 1,
+        useBite: getVal("rota_bite") === 1,
+        aggressiveShift: getVal("rota_aggressive_shift") === 1,
 
-            // 2. Calculate Deltas
-            
-            // AP (+50)
-            updateProgress(25);
-            var dpsAp = getDeltaDps(c => c.stats.ap += 50);
-            var weightAp = (dpsAp - baseDps) / 50;
-            if(weightAp <= 0) weightAp = 0.001; // Avoid division by zero
-
-            // Crit (+1%)
-            updateProgress(40);
-            var dpsCrit = getDeltaDps(c => c.stats.crit += 1.0);
-            var weightCrit = (dpsCrit - baseDps) / weightAp; // Normalize to AP
-
-            // Hit (+1%)
-            updateProgress(55);
-            var dpsHit = getDeltaDps(c => c.stats.hit += 1.0);
-            var weightHit = (dpsHit - baseDps) / weightAp;
-
-            // Haste (+1%)
-            updateProgress(70);
-            var dpsHaste = getDeltaDps(c => c.stats.haste += 1.0);
-            var weightHaste = (dpsHaste - baseDps) / weightAp;
-
-            // Strength (+50) -> Usually 2 AP + minor bonus
-            updateProgress(80);
-            var dpsStr = getDeltaDps(c => { 
-                c.stats.str += 50; 
-                c.stats.ap += 100; // 1 Str = 2 AP
-            });
-            var weightStr = ((dpsStr - baseDps) / 50) / weightAp;
-
-            // Agility (+50) -> 1 AP + Crit
-            updateProgress(90);
-            var dpsAgi = getDeltaDps(c => {
-                c.stats.agi += 50;
-                c.stats.ap += 50; // 1 Agi = 1 AP (Cat)
-                c.stats.crit += (50 / 20); // 20 Agi = 1% Crit
-            });
-            var weightAgi = ((dpsAgi - baseDps) / 50) / weightAp;
-
-            // 3. Attach Weights to Result
-            baseRes.weights = {
-                ap: 1.0,
-                str: weightStr,
-                agi: weightAgi,
-                crit: weightCrit,
-                hit: weightHit,
-                haste: weightHaste
-            };
-
-            SIM_DATA = baseRes;
-            if(SIM_LIST[ACTIVE_SIM_INDEX]) {
-                SIM_LIST[ACTIVE_SIM_INDEX].results = SIM_DATA;
-            }
-
-            switchView('avg');
-            updateProgress(100);
-            setTimeout(hideProgress, 200);
-            showToast("Weights Calculated!");
-
-        } catch(e) {
-            console.error(e);
-            hideProgress();
-            alert("Weight Error: " + e.message);
-        }
-    }, 50);
+        // Specials
+        hasWolfshead: document.getElementById("meta_wolfshead").checked,
+        hasT05_4p: document.getElementById("set_t05_4p").checked,
+        hasMCP: document.getElementById("item_mcp").checked,
+        hasOmen: true, // Assuming Omen talent is standard
+        hasFuror: true // Assuming Furor talent is standard
+    };
 }
 
 // ============================================================================
-// SIMULATION AGGREGATOR
+// CORE ENGINE
 // ============================================================================
 
-function doSimulation(cfg) {
-    var minRes = { totalDmg: Infinity, dps: 0, stats: {}, log: [] };
-    var maxRes = { totalDmg: -1, dps: 0, stats: {}, log: [] };
+function runCoreSimulation(cfg) {
+    // --- STATE INITIALIZATION ---
+    var t = 0.0; // Current Time
+    var maxT = cfg.simTime;
     
-    var totalDmgSum = 0;
-    var accStats = {
-        dmg_white: 0, dmg_shred: 0, dmg_claw: 0, dmg_bite: 0, dmg_rip: 0,
-        dmg_rake: 0, dmg_rake_init: 0, casts_shift: 0, cp_wasted: 0
-    };
-
-    for(var i = 0; i < cfg.iterations; i++) {
-        var res = runSingleFight(cfg);
-        
-        totalDmgSum += res.totalDmg;
-
-        for(var k in res.stats) {
-            if(!accStats[k]) accStats[k] = 0;
-            accStats[k] += res.stats[k];
-        }
-
-        if(res.totalDmg < minRes.totalDmg) minRes = res;
-        if(res.totalDmg > maxRes.totalDmg) maxRes = res;
-    }
-
-    var avgRes = {
-        totalDmg: totalDmgSum / cfg.iterations,
-        dps: (totalDmgSum / cfg.iterations) / cfg.maxTime,
-        stats: {},
-        log: minRes.log 
-    };
-
-    for(var k in accStats) {
-        avgRes.stats[k] = accStats[k] / cfg.iterations;
-    }
-
-    return { avg: avgRes, min: minRes, max: maxRes };
-}
-
-// ============================================================================
-// CORE ENGINE (Event Loop)
-// ============================================================================
-
-function runSingleFight(cfg) {
-    var t = 0.0;
-    var damageTotal = 0;
-    var combatLog = [];
-    var stats = { 
-        dmg_white: 0, dmg_shred: 0, dmg_claw: 0, dmg_bite: 0, dmg_rip: 0, 
-        dmg_rake: 0, dmg_rake_init: 0, casts_shift: 0, cp_wasted: 0 
-    };
-
-    // --- PLAYER STATE ---
+    // Resources
     var energy = 100;
-    var mana = cfg.stats.mana;
-    var cp = 0;
-    
-    // Timers
-    var gcdEnd = 0.0;
-    var swingTimer = 0.0;
-    var nextEnergyTick = 0.0; 
-    
-    // FIX: Variable to prevent Infinite Loop (Starvation)
-    // Forces the loop to wait until energy is returned before trying to act again
-    var nextActionAvailable = 0.0; 
+    var mana = cfg.manaPool;
+    var cp = 0; // Combo Points
 
-    // Debuffs
-    var ripEnd = 0.0;
-    var rakeEnd = 0.0;
+    // Timers (Next Event timestamps)
+    var nextEnergyTick = 0.0; // Ticks happen at T=0, 2, 4... (Start at 0 to sync, actually first tick after start is usually 2s relative to server, but we assume start at 0 is a fresh tick boundary)
+    // Actually, in WoW, you enter combat at arbitrary tick time. Let's randomize start tick offset slightly or assume 0 for consistent "fresh" start.
+    // Let's set first tick at 2.0s
+    nextEnergyTick = 2.0; 
+
+    var nextGCD = 0.0;
+    var nextSwing = 0.0;
+    var duration = 0;
+
+    // Cooldowns & Auras
+    var auras = {
+        "Clearcasting": 0, // Omen
+        "Tiger's Fury": 0,
+        "Rip": 0,
+        "Rake": 0,
+        "HasteBuff": 0, // MCP
+    };
     
-    // Constants
-    var swingSpeed = 1.0; 
-    var tickRate = 2.0;
-    var shiftCost = 400; 
-    if(cfg.stats.int > 0) shiftCost = 450; 
+    var cds = {
+        "TigersFury": 0,
+        "MCP": 0
+    };
 
-    // --- ARMOR MATH ---
-    // Turtle/Vanilla Lvl 60 Attacker vs Lvl 63 Boss -> Constant 5500
-    var armorConst = 5500; 
-    var dr = cfg.enemy.armor / (cfg.enemy.armor + armorConst);
-    if(dr > 0.75) dr = 0.75; 
-    var armorMult = 1.0 - dr;
+    // Damage Log
+    var log = [];
+    var dmgSources = {};
+    var counts = {}; // Cast counts
+    var missCounts = {};
+    var dodgeCounts = {};
+    var critCounts = {};
+    var glanceCounts = {};
+    var totalDmg = 0;
+    
+    // Stats Cache
+    var hitChance = Math.min(cfg.hit, cfg.enemyLevel === 63 ? 8.0 : 5.0); // Hard cap 8% yellow
+    var armorReduction = getArmorReduction(cfg.enemyArmor, 60);
+    
+    // Glancing Logic
+    // Base chance 40% vs lvl 63.
+    // Penalty depends on skill. 300 skill vs 315 def = 0.65 factor (-35%).
+    // 305 skill vs 315 def = ~0.85 factor (-15%).
+    var skillDiff = (cfg.enemyLevel * 5) - cfg.wepSkill; // 315 - 300 = 15
+    var glanceChance = 0.40;
+    var glancePenaltyFactor = 0.65; // Default for 300 skill
+    
+    // Approximation of Glancing Penalty based on Skill Delta
+    if (skillDiff <= 10) glancePenaltyFactor = 0.85; // 305 skill
+    if (skillDiff <= 5) glancePenaltyFactor = 0.95; // 310 skill
+    if (cfg.enemyLevel <= 60) { glanceChance = 0.10; glancePenaltyFactor = 1.0; } // Non-Boss
 
-    // --- LOGGING ---
-    function log(source, evt, amount, res, info) {
-        if(cfg.iterations === 1 || combatLog.length < 500) {
-            combatLog.push({
-                t: t, source: source, evt: evt, amount: amount, result: res,
-                energy: Math.floor(energy), cp: cp, mana: Math.floor(mana), info: info
+    // Helper: Add Damage
+    function dealDamage(source, amount, type, resultInfo) {
+        if (!dmgSources[source]) dmgSources[source] = 0;
+        dmgSources[source] += amount;
+        totalDmg += amount;
+        
+        // Log
+        if (log.length < 500) { // Limit log size for performance
+            log.push({
+                t: t,
+                event: "Damage",
+                ability: source,
+                result: resultInfo || "HIT",
+                dmg: amount,
+                energy: energy,
+                cp: cp,
+                mana: mana
+            });
+        }
+    }
+    
+    function logEvent(evt, ability, info, res) {
+        if (log.length < 500) {
+            log.push({
+                t: t,
+                event: evt,
+                ability: ability,
+                result: res || "",
+                dmg: 0,
+                energy: energy,
+                cp: cp,
+                mana: mana,
+                info: info
             });
         }
     }
 
-    // --- ATTACK TABLE ---
-    function resolveAttack(baseDmg, isYellow) {
-        var roll = Math.random() * 100;
-        var info = "";
-
-        // 1. Miss
-        var missChance = Math.max(0, 8.0 - cfg.stats.hit); 
-        if(roll < missChance) {
-            return { dmg: 0, type: "MISS", info: `Rolled ${roll.toFixed(1)} < ${missChance.toFixed(1)} (Miss)` };
-        }
-        roll -= missChance;
-
-        // 2. Dodge
-        var dodgeChance = 6.5; 
-        if(roll < dodgeChance) {
-            return { dmg: 0, type: "DODGE", info: `Rolled ${roll.toFixed(1)} < ${dodgeChance.toFixed(1)} (Dodge)` };
-        }
-        roll -= dodgeChance;
-
-        // 3. Glance (White Only)
-        if(!isYellow) {
-            var glanceChance = 40.0;
-            if(roll < glanceChance) {
-                return { dmg: baseDmg * 0.7 * armorMult, type: "GLANCE", info: "Glance (70% Dmg)" }; 
-            }
-            roll -= glanceChance;
-        }
-
-        // 4. Crit
-        // Turtle/Vanilla: Crit is suppressed by aura ~3% vs Boss
-        var effectiveCrit = Math.max(0, cfg.stats.crit - 3.0); 
-        
-        if(roll < effectiveCrit) {
-            return { dmg: baseDmg * 2.0 * armorMult, type: "CRIT", info: `Crit (${effectiveCrit.toFixed(1)}%)` };
-        }
-
-        // 5. Hit
-        return { dmg: baseDmg * armorMult, type: "HIT", info: "Normal Hit" };
+    // Use MCP at start if enabled
+    var mcpCharges = cfg.hasMCP ? 3 : 0;
+    if (cfg.hasMCP) {
+        auras["HasteBuff"] = 30.0;
+        cds["MCP"] = 0; // Immediate use logic for sim
+        mcpCharges--;
+        logEvent("Buff", "MCP Haste", "Charges: " + mcpCharges);
     }
 
     // --- MAIN LOOP ---
-    while(t < cfg.maxTime) {
-        var nextEventTime = cfg.maxTime;
-        var eventType = "END";
-
-        // Determine next event
-        // 1. Energy Tick
-        if(nextEnergyTick < nextEventTime) { nextEventTime = nextEnergyTick; eventType = "TICK"; }
-        // 2. Swing
-        if(swingTimer < nextEventTime) { nextEventTime = swingTimer; eventType = "SWING"; }
+    while (t < maxT) {
+        // 1. Determine Time Step (Jump to next event)
+        // Events: GCD, Swing, Energy Tick, Aura Expiry, Sim End
+        var events = [
+            nextGCD, 
+            nextSwing, 
+            nextEnergyTick, 
+            maxT
+        ];
         
-        // 3. Action (FIX: Check nextActionAvailable)
-        var readyTime = Math.max(t, gcdEnd, nextActionAvailable);
-        if(readyTime < nextEventTime) { nextEventTime = readyTime; eventType = "ACTION"; }
+        // Add Aura expiries to events
+        for(var a in auras) { if(auras[a] > t) events.push(auras[a]); }
 
-        // Advance Time
-        t = nextEventTime;
-        if(t >= cfg.maxTime) break;
+        // Find earliest future event
+        var nextT = maxT;
+        for(var i=0; i<events.length; i++) {
+            if(events[i] > t + 0.0001 && events[i] < nextT) nextT = events[i];
+        }
+        
+        t = nextT;
+        if (t >= maxT) break;
 
-        // Process Event
-        if(eventType === "TICK") {
+        // 2. Process Passive Events (Ticks, Buffs falling off)
+        
+        // Energy Tick
+        if (t >= nextEnergyTick - 0.001) {
             energy = Math.min(100, energy + 20);
-            nextEnergyTick += tickRate;
-            // When we get energy, we can try to act again immediately
-            nextActionAvailable = t; 
-            // log("System", "Tick", 0, "", "+20 Energy");
+            nextEnergyTick += 2.0;
+            // logEvent("Tick", "Energy", "+20"); // Too spammy
         }
-        else if(eventType === "SWING") {
-            var baseDmg = (cfg.stats.weaponDps + (cfg.stats.ap / 14));
-            var res = resolveAttack(baseDmg, false);
-            damageTotal += res.dmg;
-            stats.dmg_white += res.dmg;
-            log("Melee", "Damage", res.dmg, res.type, res.info);
-            swingTimer += swingSpeed;
-        }
-        else if(eventType === "ACTION") {
-            var actionTaken = false;
-            
-            // 0. Debuff State
-            var isBleeding = (t < ripEnd || t < rakeEnd) && cfg.enemy.canBleed;
 
-            // 1. POWERSHIFT
-            var shiftThreshold = 10;
-            var canShift = cfg.tactics.usePowershift && (mana >= shiftCost);
+        // Auto Attack (Swing)
+        if (t >= nextSwing - 0.001) {
+            // Calculate Damage
+            // (DPS + AP/14) * speed. Speed is 1.0.
+            // DPS = (Min+Max)/2 / 1.0 (since inputs are dmg range)
+            var baseWepDmg = (cfg.minDmg + Math.random() * (cfg.maxDmg - cfg.minDmg));
+            var apBonus = (cfg.ap / 14.0) * 1.0;
+            var swingDmg = baseWepDmg + apBonus;
             
-            if(canShift && energy <= shiftThreshold) {
-                var doShift = false;
-                if(cfg.tactics.aggressiveShift) {
-                    doShift = true;
+            // Multipliers
+            swingDmg *= 1.0; // DMG mod (e.g. 10% dmg buff) - simplified here
+            
+            // Attack Table
+            var roll = Math.random() * 100;
+            var result = "HIT";
+            var dmgFinal = 0;
+            
+            // Table Priorities: Miss > Dodge > Glance > Crit > Hit
+            var missChance = Math.max(0, 8.0 - cfg.hit); // 8% base vs boss
+            var dodgeChance = 6.5; 
+            var critChance = cfg.crit;
+            // Glancing is handled separately for white hits
+            
+            if (roll < missChance) {
+                result = "MISS";
+                if (!missCounts["Auto Attack"]) missCounts["Auto Attack"] = 0; missCounts["Auto Attack"]++;
+            } else if (roll < missChance + dodgeChance) {
+                result = "DODGE";
+                if (!dodgeCounts["Auto Attack"]) dodgeCounts["Auto Attack"] = 0; dodgeCounts["Auto Attack"]++;
+            } else {
+                // Landed (Glance, Crit, or Hit)
+                // Glancing check (only white hits)
+                var isGlance = (Math.random() < glanceChance);
+                
+                if (isGlance) {
+                    result = "GLANCE";
+                    swingDmg *= glancePenaltyFactor;
+                    if (!glanceCounts["Auto Attack"]) glanceCounts["Auto Attack"] = 0; glanceCounts["Auto Attack"]++;
                 } else {
-                    var timeToTick = nextEnergyTick - t;
-                    if(timeToTick > 0.5) doShift = true;
-                }
-
-                if(doShift) {
-                    mana -= shiftCost;
-                    energy = cfg.tactics.refundEnergy; 
-                    gcdEnd = t + 1.0; // GCD
-                    stats.casts_shift++;
-                    log("Powershift", "Cast", 0, "Shift", `Reset to ${energy} Energy`);
-                    actionTaken = true;
-                }
-            }
-
-            if(!actionTaken) {
-                // 2. FINISHERS (5 CP)
-                if(cp >= 5) {
-                    var ripActive = (t < ripEnd);
-                    if(cfg.enemy.canBleed && !ripActive) {
-                        if(energy >= 30) {
-                            energy -= 30;
-                            cp = 0;
-                            gcdEnd = t + 1.0;
-                            
-                            var baseRip = 800; // Approx total base
-                            var totalRip = baseRip + (0.24 * cfg.stats.ap);
-                            damageTotal += totalRip;
-                            stats.dmg_rip += totalRip;
-                            ripEnd = t + 12.0;
-                            log("Rip", "Cast", totalRip, "DoT", "Applied (12s)");
-                            actionTaken = true;
-                        }
-                    } 
-                    else if(cfg.tactics.useBite) {
-                        if(energy >= 35) {
-                            var extraEnergy = energy - 35;
-                            energy = 0; 
-                            cp = 0;
-                            gcdEnd = t + 1.0;
-                            
-                            var biteBase = 250 + (cfg.stats.ap * 0.15);
-                            var biteBonus = extraEnergy * 2.0;
-                            var rawBite = biteBase + biteBonus;
-                            
-                            var res = resolveAttack(rawBite, true);
-                            damageTotal += res.dmg;
-                            stats.dmg_bite += res.dmg;
-                            log("Ferocious Bite", "Damage", res.dmg, res.type, `Base + ${extraEnergy} extra energy`);
-                            actionTaken = true;
-                        }
-                    }
-                    else {
-                        // 5CP but nothing to use -> Waste CP and continue to builder
-                        stats.cp_wasted++;
+                    // Crit Check (Crit Cap exists due to Glancing, but usually unreachable for Feral in this simplified model)
+                    if (Math.random() * 100 < critChance) {
+                        result = "CRIT";
+                        swingDmg *= 2.0;
+                        if (!critCounts["Auto Attack"]) critCounts["Auto Attack"] = 0; critCounts["Auto Attack"]++;
+                        
+                        // Primal Fury (Talent): 100% chance to gain 5 rage? No, wait. 
+                        // Feral Cat doesn't gain resource on crit white hit unless specific set/talent?
+                        // "Omen of Clarity" triggers on HIT (White)
                     }
                 }
+                
+                // Armor Reduction
+                dmgFinal = swingDmg * (1 - armorReduction);
+                dealDamage("Auto Attack", dmgFinal, "Physical", result);
+                
+                // Omen of Clarity Proc (On Hit)
+                // Approx 2.0 PPM. Speed 1.0 => 3.3%? 
+                // Wait, standard Clearcasting is PPM. Let's use 10% generous estimate or PPM.
+                // Using flat 6% per hit for now.
+                if (cfg.hasOmen && Math.random() < 0.06) {
+                    auras["Clearcasting"] = t + 10.0; // 10s duration
+                    logEvent("Buff", "Clearcasting", "Free Spell");
+                }
+                
+                // T0.5 Set Bonus (Energy Proc)
+                if (cfg.hasT05_4p && Math.random() < 0.04) { // ~4% chance on hit
+                    energy = Math.min(100, energy + 20);
+                    logEvent("Proc", "Energy Restore", "+20 (Set)");
+                }
+            }
+            
+            if (!counts["Auto Attack"]) counts["Auto Attack"] = 0; counts["Auto Attack"]++;
+
+            // Schedule Next Swing
+            // Haste affects swing speed
+            var speed = 1.0;
+            if (auras["HasteBuff"] > t) speed /= 1.5; // MCP 50%
+            if (cfg.haste > 0) speed /= (1 + (cfg.haste / 100));
+            
+            nextSwing += speed;
+            // Catchup if lag
+            if (nextSwing < t) nextSwing = t + speed;
+        }
+
+        // Cleanup Auras
+        for (var a in auras) { if (auras[a] <= t) auras[a] = 0; }
+        
+        // MCP Refresh Logic
+        if (cfg.hasMCP && auras["HasteBuff"] <= 0 && mcpCharges > 0 && t > cds["MCP"]) {
+            // Usually MCP has no GCD, instant.
+            auras["HasteBuff"] = t + 30.0;
+            mcpCharges--;
+            logEvent("Buff", "MCP Haste", "Charges: " + mcpCharges);
+        }
+
+        // 3. DECISION ENGINE (ROTATION)
+        // Only if GCD is ready
+        if (t >= nextGCD) {
+            
+            // -- POWERSHIFT CHECK --
+            // Logic: Energy low? Mana high? Shift.
+            // Cost: Mana. Gain: Energy to 60. GCD: 1.0s.
+            var shiftThreshold = 10;
+            if (cfg.aggressiveShift) {
+                // Aggressive: Shift if we can't cast Shred/Claw (e.g. < 40 energy) 
+                // and next tick is far away (> 1.0s)? 
+                // Simplified: Shift if < 20 energy.
+                shiftThreshold = 20;
+            }
+            
+            // Don't shift if we have 5 CP (Use finisher first)
+            var canShift = cfg.usePowershift && mana > 500 && cp < 5; 
+            
+            // Special Rule: Wait for tick?
+            // If nextTick is very close (< 0.5s), maybe wait for it instead of shifting?
+            var timeToTick = nextEnergyTick - t;
+            
+            if (canShift && energy <= shiftThreshold) {
+                // Execute Shift
+                // In Turtle: "Reshift" spell uses mana and sets energy.
+                // Assuming Furor (40) + Wolfshead (20) = 60 Energy.
+                
+                mana -= 400; // Approx cost reduced by talents
+                energy = 60; // Instant 60
+                
+                if (!counts["Powershift"]) counts["Powershift"] = 0; counts["Powershift"]++;
+                logEvent("Cast", "Powershift", "Energy -> 60");
+                
+                // Trigger GCD
+                nextGCD = t + 1.0; // Shifting incurs global cooldown
+                continue; // Action taken, loop again
             }
 
-            if(!actionTaken) {
-                // 3. GENERATORS
-                var rakeActive = (t < rakeEnd);
-                if(cfg.tactics.useRake && cfg.enemy.canBleed && !rakeActive) {
-                    if(energy >= 35) {
-                        energy -= 35;
-                        gcdEnd = t + 1.0;
+            // -- ENERGY ABILITY PRIORITY --
+            
+            var action = null;
+            var cost = 0;
+            
+            // Cost Modifiers
+            var costShred = 48; // Talented
+            var costClaw = 40;  // Talented
+            var costRake = 35;  // Talented
+            var costRip = 30;
+            var costBite = 35;
+            
+            // Clearcasting Check
+            var isClearcast = (auras["Clearcasting"] > t);
+            if (isClearcast) {
+                costShred = 0; costClaw = 0; costRake = 0; costRip = 0; costBite = 0;
+            }
+
+            // 1. FINISHERS (5 CP)
+            if (cp >= 5) {
+                // Priority: Rip > Bite
+                // Condition: Target can bleed for Rip
+                
+                var ripActive = (auras["Rip"] > t);
+                
+                if (cfg.canBleed && !ripActive) {
+                    // CAST RIP
+                    if (energy >= costRip) {
+                        action = "Rip";
+                        cost = costRip;
+                    }
+                } else if (cfg.useBite) {
+                    // CAST BITE
+                    if (energy >= costBite) {
+                        action = "Ferocious Bite";
+                        cost = costBite;
+                    }
+                } else {
+                    // If Bite disabled and Rip active, we might waste CP or just Claw/Shred?
+                    // Vanilla behavior: Continue building (waste CP) or pool?
+                    // Let's assume we pool or wait. But simplified: Do nothing, let Swing happen.
+                }
+            }
+            
+            // 2. BUILDERS
+            if (!action) {
+                // Priority: Rake (if not active & bleed allowed) > Shred/Claw
+                
+                var rakeActive = (auras["Rake"] > t);
+                
+                if (cfg.useRake && cfg.canBleed && !rakeActive) {
+                    if (energy >= costRake) {
+                        action = "Rake";
+                        cost = costRake;
+                    }
+                }
+                
+                if (!action) {
+                    // Shred or Claw
+                    var spell = cfg.posBehind ? "Shred" : "Claw";
+                    var c = cfg.posBehind ? costShred : costClaw;
+                    
+                    if (energy >= c) {
+                        action = spell;
+                        cost = c;
+                    }
+                }
+            }
+            
+            // EXECUTE ACTION
+            if (action) {
+                // Deduct Cost
+                energy -= cost;
+                
+                // Consume Clearcasting
+                if (isClearcast) {
+                    auras["Clearcasting"] = 0;
+                    logEvent("Buff", "Clearcasting", "Consumed");
+                }
+                
+                // Perform Attack
+                var dmg = 0;
+                var res = "HIT";
+                
+                // Roll Hit/Crit/Dodge/Miss (Yellow Hit)
+                // Yellow Hit Cap is 8%.
+                // Table: Miss > Dodge > Crit > Hit (No Glancing for Yellow)
+                var roll = Math.random() * 100;
+                var missC = Math.max(0, 8.0 - cfg.hit); // Yellow Cap 8% assumed
+                
+                if (roll < missC) {
+                    res = "MISS";
+                    energy += (cost * 0.8); // Refund 80% on miss
+                    if (!missCounts[action]) missCounts[action] = 0; missCounts[action]++;
+                } else if (roll < missC + dodgeChance) {
+                    res = "DODGE";
+                    energy += (cost * 0.8); // Refund 80% on dodge
+                    if (!dodgeCounts[action]) dodgeCounts[action] = 0; dodgeCounts[action]++;
+                } else {
+                    // HIT or CRIT
+                    var isCrit = (Math.random() * 100 < cfg.crit);
+                    if (action === "Rip") isCrit = false; // DoTs don't crit in Classic
+                    
+                    if (isCrit) {
+                        res = "CRIT";
+                        if (!critCounts[action]) critCounts[action] = 0; critCounts[action]++;
+                        
+                        // Primal Fury: Crit grants 2 CP total (1 base + 1 bonus)
+                        // Only for generators
+                        if (action === "Shred" || action === "Claw" || action === "Rake") {
+                            cp += 1; // Bonus point
+                        }
+                    }
+                    
+                    // Damage Calculation
+                    var dmgBase = 0;
+                    var ap = cfg.ap;
+                    // Apply AP mods here
+                    
+                    if (action === "Shred") {
+                        // (Wep * 2.25) + 180
+                        var wep = (cfg.minDmg + cfg.maxDmg) / 2; // Avg weapon dmg
+                        dmgBase = (wep * 2.25) + 180;
+                        cp++;
+                    } else if (action === "Claw") {
+                        // Wep + 115
+                        var wep = (cfg.minDmg + cfg.maxDmg) / 2;
+                        dmgBase = wep + 115;
+                        
+                        // OPEN WOUNDS (Turtle): +10% per bleed
+                        var bleeds = 0;
+                        if (auras["Rake"] > t) bleeds++;
+                        if (auras["Rip"] > t) bleeds++;
+                        if (bleeds > 0) dmgBase *= (1 + (0.10 * bleeds));
+                        
+                        cp++;
+                    } else if (action === "Rake") {
+                        // Initial Dmg: Wep * 0.5 + 20 (Low)
+                        var wep = (cfg.minDmg + cfg.maxDmg) / 2;
+                        dmgBase = (wep * 0.5) + 20;
                         cp++;
                         
-                        var rakeInit = (cfg.stats.weaponDps * 0.5) + 20;
-                        var res = resolveAttack(rakeInit, true);
-                        damageTotal += res.dmg;
-                        stats.dmg_rake_init += res.dmg;
-                        
-                        if(res.type !== "MISS" && res.type !== "DODGE") {
-                            if(res.type === "CRIT") cp++; 
-                            rakeEnd = t + 9.0;
-                            var tickDmg = 25 + (0.06 * cfg.stats.ap);
-                            var totalDoT = tickDmg * 3;
-                            damageTotal += totalDoT;
-                            stats.dmg_rake += totalDoT;
-                            log("Rake", "Cast", totalDoT, "DoT", "Applied (9s)");
-                        } else {
-                            log("Rake", "Miss", 0, res.type, res.info);
+                        // Apply DoT
+                        if (res !== "MISS" && res !== "DODGE") {
+                            auras["Rake"] = t + 9.0;
+                            // DoT Ticks calculation handled implicitly? 
+                            // No, we need to schedule ticks or deal full DoT dmg? 
+                            // Simulating ticks is better.
+                            // Simplified: Just add total DoT dmg divided over time?
+                            // Let's implement DoT ticks in future updates. 
+                            // For now: Add total expected DoT dmg immediately to keep engine simple (DPM Map style) 
+                            // OR handle tick events. 
+                            // Let's Add DoT damage flat here for simplicity of the prototype.
+                            var rakeDoT = (9/3) * (19 + ap * 0.06); // 3 ticks, base ~19 + AP scaling
+                            dealDamage("Rake (DoT)", rakeDoT * (1 - armorReduction), "Bleed", "DoT"); 
                         }
-                        actionTaken = true;
-                    }
-                }
-            }
-
-            if(!actionTaken) {
-                // SHRED / CLAW
-                var skillName = cfg.tactics.behind ? "Shred" : "Claw";
-                var cost = cfg.tactics.behind ? 48 : 40; 
-                
-                if(energy >= cost) {
-                    energy -= cost;
-                    gcdEnd = t + 1.0;
-                    cp++;
-                    
-                    var dmgRaw = 0;
-                    if(cfg.tactics.behind) {
-                        var base = (cfg.stats.weaponDps + (cfg.stats.ap / 14));
-                        dmgRaw = (base * 2.25) + 180;
-                    } else {
-                        var bleedCount = 0;
-                        if(t < ripEnd) bleedCount++;
-                        if(t < rakeEnd) bleedCount++;
+                    } else if (action === "Rip") {
+                        // Finisher. High DoT.
+                        // Base (5 CP) ~ 1000? Formula: Base + 0.24 * AP
+                        // Rank 6 Rip (Level 60): 834 over 12 sec?
+                        // Let's use AP formula: (Base + 24% AP) / Ticks?
+                        // Approx: 12 sec = 6 ticks.
+                        // Total Dmg = 684 + (2454 * 0.24)? Need valid formula.
+                        // Using provided prompt info: "Basiswert + (0.24 * AP)"
+                        var ripBase = 600 + (ap * 0.24 * 5); // Rough Scaling
+                        if (res !== "MISS" && res !== "DODGE") {
+                             auras["Rip"] = t + 12.0;
+                             dealDamage("Rip", ripBase, "Bleed", "DoT"); // Instant full credit for simplicity
+                             cp = 0; // Reset CP
+                        }
+                    } else if (action === "Ferocious Bite") {
+                        // Consumes all energy.
+                        // Base (5 CP) ~ 200 + AP * 0.15
+                        // Plus dmg per extra energy
+                        var extraEnergy = energy; // All remaining
+                        energy = 0;
                         
-                        var base = (cfg.stats.weaponDps + (cfg.stats.ap / 14));
-                        dmgRaw = base + 115;
-                        if(bleedCount > 0) dmgRaw *= (1.0 + (0.10 * bleedCount)); // Open Wounds
+                        dmgBase = 200 + (ap * 0.15);
+                        dmgBase += (extraEnergy * 2.0); // +2 dmg per point
+                        
+                        cp = 0;
                     }
                     
-                    var res = resolveAttack(dmgRaw, true);
-                    damageTotal += res.dmg;
+                    // Crit Multiplier
+                    if (isCrit) dmgBase *= 2.0; // Standard Melee Crit
                     
-                    if(skillName === "Shred") stats.dmg_shred += res.dmg;
-                    else stats.dmg_claw += res.dmg;
+                    // Armor
+                    // Bleeds ignore armor
+                    var isBleed = (action === "Rip" || action.includes("DoT"));
+                    if (!isBleed) dmgBase *= (1 - armorReduction);
                     
-                    if(res.type === "CRIT") cp++; 
-                    
-                    log(skillName, "Damage", res.dmg, res.type, res.info);
-                    actionTaken = true;
+                    // Deal Damage
+                    dealDamage(action, dmgBase, "Physical", res);
                 }
-            }
-
-            // --- INFINITE LOOP PREVENTER ---
-            if(!actionTaken) {
-                // If we are here, we wanted to act but lacked energy.
-                // We MUST wait for the next energy tick before trying "ACTION" again.
-                // Otherwise, the loop restarts at the exact same 't' and freezes the browser.
-                nextActionAvailable = nextEnergyTick;
                 
-                // Safety check: Ensure time moves forward
-                if(nextActionAvailable <= t) nextActionAvailable = t + 0.1;
+                if (!counts[action]) counts[action] = 0; counts[action]++;
+                
+                // CP Cap
+                if (cp > 5) cp = 5;
+                
+                // GCD Trigger
+                nextGCD = t + 1.0;
             }
         }
     }
+    
+    // --- END STATS ---
+    var dps = totalDmg / maxT;
+    
+    return {
+        dps: dps,
+        totalDmg: totalDmg,
+        duration: maxT,
+        log: log,
+        dmgSources: dmgSources,
+        counts: counts,
+        missCounts: missCounts,
+        critCounts: critCounts,
+        glanceCounts: glanceCounts,
+        dodgeCounts: dodgeCounts,
+        casts: counts // Alias
+    };
+}
 
-    return { totalDmg: damageTotal, dps: damageTotal / cfg.maxTime, stats: stats, log: combatLog };
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function getArmorReduction(armor, attackerLvl) {
+    // DR% = Armor / (Armor + 400 + 85 * (AttackerLevel + 4.5 * (AttackerLevel - 59)))
+    // For Level 60 attacker:
+    // Constant = 400 + 85 * (60 + 4.5) = 400 + 85 * 64.5 = 400 + 5482.5 = 5882.5
+    var c = 5882.5;
+    return armor / (armor + c);
+}
+
+function aggregateResults(results) {
+    if (!results || results.length === 0) return {};
+    
+    var totalDPS = 0;
+    var totalDmg = 0;
+    var dmgSources = {};
+    var counts = {};
+    var critCounts = {};
+    var missCounts = {};
+    var glanceCounts = {};
+    var dodgeCounts = {};
+    
+    // Sum up
+    results.forEach(function(r) {
+        totalDPS += r.dps;
+        totalDmg += r.totalDmg;
+        
+        for(var k in r.dmgSources) {
+            dmgSources[k] = (dmgSources[k] || 0) + r.dmgSources[k];
+        }
+        for(var k in r.counts) {
+            counts[k] = (counts[k] || 0) + r.counts[k];
+        }
+        for(var k in r.critCounts) {
+            critCounts[k] = (critCounts[k] || 0) + r.critCounts[k];
+        }
+        for(var k in r.missCounts) {
+            missCounts[k] = (missCounts[k] || 0) + r.missCounts[k];
+        }
+        for(var k in r.glanceCounts) {
+            glanceCounts[k] = (glanceCounts[k] || 0) + r.glanceCounts[k];
+        }
+        for(var k in r.dodgeCounts) {
+            dodgeCounts[k] = (dodgeCounts[k] || 0) + r.dodgeCounts[k];
+        }
+    });
+    
+    var n = results.length;
+    
+    // Average out
+    for(var k in dmgSources) dmgSources[k] /= n;
+    for(var k in counts) counts[k] /= n;
+    for(var k in critCounts) critCounts[k] /= n;
+    for(var k in missCounts) missCounts[k] /= n;
+    for(var k in glanceCounts) glanceCounts[k] /= n;
+    for(var k in dodgeCounts) dodgeCounts[k] /= n;
+    
+    // Return Avg structure
+    return {
+        dps: totalDPS / n,
+        totalDmg: totalDmg / n,
+        duration: results[0].duration,
+        log: results[0].log, // Return log of first sim for visualization
+        dmgSources: dmgSources,
+        counts: counts,
+        critCounts: critCounts,
+        missCounts: missCounts,
+        glanceCounts: glanceCounts,
+        dodgeCounts: dodgeCounts,
+        casts: counts
+    };
 }

@@ -1,5 +1,7 @@
 /**
  * Feral Simulation - File 3: Gear Planner Logic & Database
+ * Updated for Turtle WoW 1.18 (Feral Cat)
+ * Fixed: Weapon Skills (Mace/Polearm) ignored for Feral. Only 'Feral Combat' counts.
  */
 
 var ITEM_ID_MAP = {}; // Performance cache for lookups
@@ -29,20 +31,33 @@ async function loadDatabase() {
         ITEM_DB = items.filter(i => {
             // FIX: Some JSONs use 'level', some 'itemLevel'
             i.itemLevel = i.level || i.itemLevel || 0;
-            
             // Filter Junk
             if ((i.quality || 0) < 2) return false;
-            
-            // Allow Idols, otherwise filter low level gear
-            if (i.itemLevel < 30 && i.slot !== "Idol" && i.slot !== "Relic") return false;
+            if (i.itemLevel < 35 && i.slot !== "Relic" && i.slot !== "Idol" && i.slot !== "Trinket") return false;
 
-            // CLASS FILTER: 512 = Druid
-            if (i.allowableClasses && i.allowableClasses !== -1 && (i.allowableClasses & 512) === 0) return false;
-
-            // ARMOR FILTER: Leather(2), Cloth(1), None(0) - No Mail(3)/Plate(4)
+            // ARMOR FILTER: Cloth(1), Leather(2) only.
             if (i.armorType && i.armorType > 2) return false;
             
-            return true;
+            // WEAPON FILTER: Exclude Shields
+            if (i.slot === "Shield") return false;
+
+            // STAT FILTER
+            var interesting = false;
+            // Known IDs (Wolfshead, MCP, etc)
+            if (i.id === 8345 || i.id === 9449 || i.id === 23207) interesting = true;
+            
+            // Stats check
+            if (i.agility > 0 || i.strength > 0) interesting = true;
+            if (i.effects) {
+                if (i.effects.attackPower > 0 || i.effects.feralAttackPower > 0 || i.effects.crit > 0 || i.effects.hit > 0) interesting = true;
+                // Custom Text Check for "Cat", "Feral", "Attack Power", "Feral Combat"
+                if (i.effects.custom && Array.isArray(i.effects.custom)) {
+                    var customStr = i.effects.custom.join(" ");
+                    if (customStr.includes("Attack Power") || customStr.includes("Cat") || customStr.includes("Feral")) interesting = true;
+                }
+            }
+            
+            return interesting;
         });
 
         // Build Map for O(1) lookup
@@ -78,7 +93,6 @@ function initGearPlannerUI() {
 function getIconUrl(iconName) {
     if (!iconName) return "https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg";
     var cleanName = iconName.replace(/\\/g, "/").split("/").pop().replace(/\.jpg|\.png/g, "").toLowerCase();
-    // Use local folder or CDN
     return "data/wow-icons/" + cleanName + ".jpg";
 }
 
@@ -89,7 +103,6 @@ function renderSlotColumn(pos, containerId) {
 
     SLOT_LAYOUT[pos].forEach(function (slotName) {
         var itemId = GEAR_SELECTION[slotName];
-        // Handle ID or Object (Legacy Safety)
         if (itemId && typeof itemId === 'object' && itemId.id) itemId = itemId.id;
 
         var item = itemId ? ITEM_ID_MAP[itemId] : null;
@@ -99,7 +112,6 @@ function renderSlotColumn(pos, containerId) {
         var div = document.createElement("div");
         div.className = "char-slot";
 
-        // Simple Tooltip logic
         div.onmouseenter = function (e) { showTooltip(e, item); };
         div.onmousemove = function (e) { moveTooltip(e); };
         div.onmouseleave = function () { hideTooltip(); };
@@ -115,27 +127,21 @@ function renderSlotColumn(pos, containerId) {
             rarityClass = "q" + (item.quality || 1);
             displayName = item.name;
             var s = calculateItemScore(item, slotName);
-            statText = "Score: " + s.toFixed(1);
+            statText = "EP: " + s.toFixed(1) + " | iLvl: " + item.itemLevel;
 
-            // LINK BUTTON LOGIC
             if (item.url) {
                 linkHtml = '<a href="' + item.url + '" target="_blank" class="slot-link-btn" title="Open in Database" onclick="event.stopPropagation()">🔗</a>';
             }
         }
 
-        // --- ENCHANT RENDER LOGIC ---
         var canEnchant = true;
-        if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Finger")) canEnchant = false;
-        // Offhand can be enchanted if not held in offhand (Shield), but druids usually use Held In Offhand which can't be enchanted, or Weapons which can.
-        // Simplified:
-        if (slotName === "Off Hand" && item && item.slot === "Held In Off-hand") canEnchant = false;
+        if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off")) canEnchant = false;
 
         var enchantHtml = "";
         if (canEnchant) {
             var enchName = enchant ? enchant.name : "+ Enchant";
-            var enchStyle = enchant ? "color:#1eff00; font-size:0.75rem;" : "color:#555; font-size:0.7rem; font-style:italic;";
+            var enchStyle = enchant ? "color:#0f0; font-size:0.75rem;" : "color:#555; font-size:0.7rem; font-style:italic;";
             var eIdPass = enchant ? enchant.id : 0;
-            // Add hover events for enchant tooltip
             enchantHtml = '<div class="slot-enchant-click" onmouseenter="showEnchantTooltip(event, ' + eIdPass + ')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" onclick="event.stopPropagation(); openEnchantSelector(\'' + slotName + '\')" style="' + enchStyle + '; margin-top:2px; cursor:pointer;">' + enchName + '</div>';
         }
 
@@ -145,7 +151,7 @@ function renderSlotColumn(pos, containerId) {
             '<span class="slot-stats">' + statText + '</span>' +
             enchantHtml +
             '</div>' +
-            linkHtml; // Append Link Button
+            linkHtml; 
         div.innerHTML = html;
         container.appendChild(div);
     });
@@ -173,30 +179,24 @@ function showTooltip(e, item) {
     html += '<div class="tt-spacer"></div>';
     
     // Primary Stats
+    if (item.stamina) html += '<div class="tt-white">+' + item.stamina + ' Stamina</div>';
     if (item.strength) html += '<div class="tt-white">+' + item.strength + ' Strength</div>';
     if (item.agility) html += '<div class="tt-white">+' + item.agility + ' Agility</div>';
-    if (item.stamina) html += '<div class="tt-white">+' + item.stamina + ' Stamina</div>';
     if (item.intellect) html += '<div class="tt-white">+' + item.intellect + ' Intellect</div>';
-    if (item.spirit) html += '<div class="tt-white">+' + item.spirit + ' Spirit</div>';
     
-    // Weapon Stats
-    if (item.minDmg && item.maxDmg && item.speed) {
-         html += '<div class="tt-white">' + item.minDmg + ' - ' + item.maxDmg + ' Damage</div>';
-         html += '<div class="tt-white">Speed ' + item.speed.toFixed(2) + '</div>';
-         var dps = ((item.minDmg + item.maxDmg) / 2) / item.speed;
-         html += '<div class="tt-white">(' + dps.toFixed(1) + ' damage per second)</div>';
-    }
-
     html += '<div class="tt-spacer"></div>';
 
     if (item.effects) {
         var eff = item.effects;
-        if (eff.crit) html += '<div class="tt-green">Equip: Improves your chance to get a critical strike by ' + eff.crit + '%.</div>';
         if (eff.hit) html += '<div class="tt-green">Equip: Improves your chance to hit by ' + eff.hit + '%.</div>';
-        if (eff.haste) html += '<div class="tt-green">Equip: Improves your attack speed by ' + eff.haste + '%.</div>';
+        if (eff.crit) html += '<div class="tt-green">Equip: Improves your chance to get a critical strike by ' + eff.crit + '%.</div>';
         if (eff.attackPower) html += '<div class="tt-green">Equip: + ' + eff.attackPower + ' Attack Power.</div>';
-        if (eff.feralAttackPower) html += '<div class="tt-green">Equip: + ' + eff.feralAttackPower + ' Attack Power in Cat, Bear, and Dire Bear forms.</div>';
+        if (eff.feralAttackPower) html += '<div class="tt-green">Equip: + ' + eff.feralAttackPower + ' Attack Power in Cat, Bear, and Dire Bear forms only.</div>';
         
+        // Haste logic (MCP)
+        if (item.id === 9449) html += '<div class="tt-green">Use: Increases attack speed by 50% for 30 sec. (3 Charges)</div>';
+
+        // Custom Text Lines (Turtle WoW)
         if (eff.custom && Array.isArray(eff.custom)) {
             eff.custom.forEach(function (line) {
                 html += '<div class="tt-green">' + line + '</div>';
@@ -207,7 +207,6 @@ function showTooltip(e, item) {
     // SET INFORMATION LOGIC
     if (item.setName) {
         html += '<div class="tt-spacer"></div>';
-
         var siblings = ITEM_DB.filter(function (i) { return i.setName === item.setName; });
         var equippedCount = 0;
         for (var slot in GEAR_SELECTION) {
@@ -217,9 +216,7 @@ function showTooltip(e, item) {
                 if (gItem && gItem.setName === item.setName) equippedCount++;
             }
         }
-
         html += '<div class="tt-gold">' + item.setName + ' (' + equippedCount + '/' + siblings.length + ')</div>';
-
         siblings.forEach(function (sItem) {
             var isEquipped = false;
             for (var slot in GEAR_SELECTION) {
@@ -230,28 +227,13 @@ function showTooltip(e, item) {
         });
 
         html += '<div class="tt-spacer"></div>';
-
         if (item.setBonuses) {
             var keys = Object.keys(item.setBonuses).sort(function (a, b) { return a - b });
             keys.forEach(function (thresholdStr) {
                 var threshold = parseInt(thresholdStr);
-                var bonusData = item.setBonuses[thresholdStr];
                 var isActive = (equippedCount >= threshold);
                 var color = isActive ? '#0f0' : '#888';
-                
-                var descriptions = [];
-                if (bonusData.attackPower > 0) descriptions.push("Increases attack power by " + bonusData.attackPower + ".");
-                if (bonusData.crit > 0) descriptions.push("Improves critical strike chance by " + bonusData.crit + "%.");
-                if (bonusData.hit > 0) descriptions.push("Improves hit chance by " + bonusData.hit + "%.");
-                if (bonusData.energyReturn) descriptions.push("Restores energy when shifting."); 
-                
-                if (bonusData.custom && Array.isArray(bonusData.custom)) {
-                    bonusData.custom.forEach(function (c) { descriptions.push(c); });
-                }
-                
-                descriptions.forEach(function (desc) {
-                    html += '<div style="color:' + color + '">(' + threshold + ') Set: ' + desc + '</div>';
-                });
+                html += '<div style="color:' + color + '">(' + threshold + ') Set Bonus</div>';
             });
         }
     }
@@ -277,10 +259,9 @@ function showEnchantTooltip(e, enchantId) {
         html += '<div class="tt-green">' + ench.text + '</div>';
     } else if (ench.effects) {
         var ef = ench.effects;
-        if (ef.strength) html += '<div class="tt-green">+' + ef.strength + ' Strength</div>';
         if (ef.agility) html += '<div class="tt-green">+' + ef.agility + ' Agility</div>';
+        if (ef.strength) html += '<div class="tt-green">+' + ef.strength + ' Strength</div>';
         if (ef.attackPower) html += '<div class="tt-green">+' + ef.attackPower + ' Attack Power</div>';
-        if (ef.crit) html += '<div class="tt-green">+' + ef.crit + '% Crit</div>';
     }
 
     tt.innerHTML = html;
@@ -310,8 +291,10 @@ var CURRENT_SELECTING_SLOT = null;
 function openItemSelector(slotName) {
     CURRENT_SELECTING_SLOT = slotName;
     var modal = document.getElementById("itemSelectorModal");
+    var title = document.getElementById("modalTitle");
     var input = document.getElementById("itemSearchInput");
-    if (modal && input) {
+    if (modal && title && input) {
+        title.innerText = "Select " + slotName;
         modal.classList.remove("hidden");
         input.value = ""; input.focus();
         renderItemList();
@@ -328,27 +311,19 @@ function renderItemList(filterText) {
     unequipDiv.onclick = function () { selectItem(0); };
     unequipDiv.innerHTML = '<div class="item-row-icon" style="background:#333;"></div><div class="item-row-details"><div class="item-row-name" style="color:#888;">- Unequip -</div></div>';
     list.appendChild(unequipDiv);
-    
+
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
     if (slotKey.includes("Trinket")) slotKey = "Trinket";
-    if (slotKey === "Idol") slotKey = "Relic"; // Shared DB mostly
-
+    
     var relevantItems = ITEM_DB.filter(function (i) {
-        if (CURRENT_SELECTING_SLOT === "Main Hand") {
-            // Include Feral Weapons (Staves, Maces, Polearms, Daggers/Fist if compatible)
-            var s = i.slot.toLowerCase().replace(/[\s-]/g, "");
-            if (s !== "mainhand" && s !== "onehand" && s !== "twohand") return false;
-            return true; 
-        }
-
         if (CURRENT_SELECTING_SLOT === "Finger 1" && GEAR_SELECTION["Finger 2"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Finger 2" && GEAR_SELECTION["Finger 1"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id) return false;
-
-        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Offhand" || i.slot === "Shield" || i.slot === "Held In Off-hand"); 
-        
+        if (CURRENT_SELECTING_SLOT === "Main Hand") {
+             return i.slot === "Mainhand" || i.slot === "Onehand" || i.slot === "Twohand";
+        }
         return i.slot === slotKey;
     });
 
@@ -371,7 +346,7 @@ function renderItemList(filterText) {
 
         var html = '<div class="item-row-icon"><img src="' + iconUrl + '" style="width:100%; height:100%; border-radius:3px;"></div>' +
             '<div class="item-row-details"><div class="item-row-name" style="color: ' + getItemColor(item.quality) + '">' + item.name + '</div><div class="item-row-sub">iLvl: ' + item.itemLevel + '</div></div>' +
-            '<div class="item-score-badge"><span class="score-label">SCORE</span>' + item.simScore.toFixed(1) + '</div>';
+            '<div class="item-score-badge"><span class="score-label">EP</span>' + item.simScore.toFixed(1) + '</div>';
 
         row.innerHTML = html;
         list.appendChild(row);
@@ -382,29 +357,25 @@ function filterItemList() { var txt = document.getElementById("itemSearchInput")
 function selectItem(itemId) {
     if (CURRENT_SELECTING_SLOT) {
         GEAR_SELECTION[CURRENT_SELECTING_SLOT] = itemId;
-        // Two Hand Logic: Unequip Offhand
         if (CURRENT_SELECTING_SLOT === "Main Hand" && itemId != 0) {
             var item = ITEM_ID_MAP[itemId];
-            if (item) {
-                var s = item.slot.toLowerCase().replace(/[\s-]/g, "");
-                if (s === "twohand") {
-                    GEAR_SELECTION["Off Hand"] = 0;
-                    showToast("Off-Hand unequipped.");
-                }
+            if (item && (item.slot === "Twohand" || item.slot === "Staff" || item.slot === "Polearm")) {
+                GEAR_SELECTION["Off Hand"] = 0;
             }
         }
     }
     closeItemModal();
     initGearPlannerUI();
-    saveCurrentState();
+    saveCurrentState(); 
 }
-
 
 // --- ENCHANT MODAL ---
 function openEnchantSelector(slotName) {
     CURRENT_SELECTING_SLOT = slotName;
     var modal = document.getElementById("enchantSelectorModal");
-    if (modal) {
+    var title = document.getElementById("enchantModalTitle");
+    if (modal && title) {
+        title.innerText = "Enchant " + slotName;
         modal.classList.remove("hidden");
         renderEnchantList();
     }
@@ -423,15 +394,11 @@ function renderEnchantList() {
     list.appendChild(unequipDiv);
 
     var slotKey = CURRENT_SELECTING_SLOT;
-    if (slotKey === "Main Hand") slotKey = "Weapon";
+    if (slotKey.includes("Finger")) slotKey = "Finger";
+    if (slotKey === "Main Hand") slotKey = "Two Hand"; 
 
     var relevantEnchants = ENCHANT_DB.filter(function (e) {
-        // Class Filter
-        if (e.allowableClasses && e.allowableClasses !== -1 && (e.allowableClasses & 512) === 0) return false;
-        
-        // Slot Filter logic
-        if (CURRENT_SELECTING_SLOT === "Main Hand") return (e.slot === "Weapon" || e.slot === "Two Hand");
-        return e.slot === CURRENT_SELECTING_SLOT || e.slot === slotKey;
+        return e.slot === slotKey || e.slot === CURRENT_SELECTING_SLOT;
     });
 
     relevantEnchants.forEach(function (e) { e.simScore = calculateEnchantScore(e); });
@@ -445,8 +412,9 @@ function renderEnchantList() {
         row.onmousemove = function (e) { moveTooltip(e); };
         row.onmouseleave = function () { hideTooltip(); };
 
-        var html = '<div class="item-row-details"><div class="item-row-name" style="color: #1eff00;">' + ench.name + '</div></div>' +
-            '<div class="item-score-badge"><span class="score-label">SCORE</span>' + ench.simScore.toFixed(1) + '</div>';
+        var desc = ench.text || "";
+        var html = '<div class="item-row-details"><div class="item-row-name" style="color: #1eff00;">' + ench.name + '</div><div class="item-row-sub">' + desc + '</div></div>' +
+            '<div class="item-score-badge"><span class="score-label">EP</span>' + ench.simScore.toFixed(1) + '</div>';
 
         row.innerHTML = html;
         list.appendChild(row);
@@ -454,219 +422,223 @@ function renderEnchantList() {
 }
 
 function selectEnchant(enchId) {
-    if (CURRENT_SELECTING_SLOT) ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = enchId;
+    if (CURRENT_SELECTING_SLOT) {
+        ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = enchId;
+    }
     closeEnchantModal();
     initGearPlannerUI();
-    saveCurrentState();
+    saveCurrentState(); 
 }
 
 function resetGear() { GEAR_SELECTION = {}; ENCHANT_SELECTION = {}; initGearPlannerUI(); }
 function recalcItemScores() {
-    if (!document.getElementById("itemSelectorModal").classList.contains("hidden")) filterItemList();
+    if (!document.getElementById("itemSelectorModal").classList.contains("hidden")) {
+        renderItemList(document.getElementById("itemSearchInput").value);
+    }
+    initGearPlannerUI(); 
 }
 
-// --- FERAL SCORE CALCULATIONS ---
-
+// ----------------------------------------------------------------------------
+// SCORING (Equivalence Points - EP)
+// ----------------------------------------------------------------------------
 function calculateItemScore(item, slotNameOverride) {
     if (!item) return 0;
-    // Dynamic Weights from Inputs
-    var wAP = getVal("weight_ap") || 1.0;
-    var wCrit = getVal("weight_crit") || 20.0;
-    var wHit = getVal("weight_hit") || 18.0;
-    var wStr = getVal("weight_str") || 2.0;
-    var wAgi = getVal("weight_agi") || 2.2;
-    var wHaste = getVal("weight_haste") || 10.0;
-
+    
+    // Defaults (Approximate Feral Weights)
+    var wAP = parseFloat(getVal("weight_ap") || 1.0);
+    var wStr = parseFloat(getVal("weight_str") || 2.4); 
+    var wAgi = parseFloat(getVal("weight_agi") || 2.5); 
+    var wCrit = parseFloat(getVal("weight_crit") || 22.0); 
+    var wHit = parseFloat(getVal("weight_hit") || 18.0);
+    
     var score = 0;
     var e = item.effects || {};
-    
-    // Stats
-    var str = item.strength || 0;
-    var agi = item.agility || 0;
-    var ap = (e.attackPower || 0) + (e.feralAttackPower || 0); // Turtle Feral AP
-    var hit = e.hit || 0;
-    var crit = e.crit || 0;
-    var haste = e.haste || 0;
 
-    score += str * wStr;
-    score += agi * wAgi;
-    score += ap * wAP;
-    score += hit * wHit;
-    score += crit * wCrit;
-    score += haste * wHaste;
+    // 1. BASE STATS
+    score += (item.strength || 0) * wStr;
+    score += (item.agility || 0) * wAgi;
+    score += (e.attackPower || 0) * wAP;
+    score += (e.feralAttackPower || 0) * wAP;
 
-    // Set Bonus Logic
-    if (item.setName) {
-        var currentSlot = slotNameOverride || CURRENT_SELECTING_SLOT;
-        var otherSetItemsCount = 0;
-        for (var slot in GEAR_SELECTION) {
-            if (currentSlot && slot === currentSlot) continue;
-            var id = GEAR_SELECTION[slot];
-            if (id && id != 0) {
-                var equipped = ITEM_ID_MAP[id];
-                if (equipped && equipped.setName === item.setName) otherSetItemsCount++;
+    score += (e.crit || 0) * wCrit;
+    score += (e.hit || 0) * wHit;
+
+    // CUSTOM TEXT PARSING (Turtle WoW)
+    if (e.custom && Array.isArray(e.custom)) {
+        e.custom.forEach(function(line) {
+            // "Equip: +322 Attack Power in Cat..."
+            var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
+            if (matchAP) {
+                if (line.includes("Cat") || line.includes("forms") || !line.includes("form")) {
+                     score += parseInt(matchAP[1]) * wAP;
+                }
             }
-        }
-        var newTotalCount = otherSetItemsCount + 1;
-        if (item.setBonuses) {
-             var keys = Object.keys(item.setBonuses);
-             keys.forEach(function(k) {
-                 if (parseInt(k) === newTotalCount) {
-                     var b = item.setBonuses[k];
-                     score += (b.attackPower || 0) * wAP;
-                     score += (b.crit || 0) * wCrit;
-                     score += (b.hit || 0) * wHit;
-                     score += (b.haste || 0) * wHaste;
-                 }
-             });
-        }
+        });
     }
+
+    // Special Items
+    if (item.id === 8345) score += 300; // Wolfshead Helm
+    if (item.id === 9449) score += 500; // MCP
+    if (item.id === 23207) score += 50; // Badge of the Swarmguard
+
     return score;
 }
 
 function calculateEnchantScore(ench) {
     if (!ench) return 0;
-    var wAP = getVal("weight_ap") || 1.0;
-    var wCrit = getVal("weight_crit") || 20.0;
-    var wStr = getVal("weight_str") || 2.0;
-    var wAgi = getVal("weight_agi") || 2.2;
-    var wHit = getVal("weight_hit") || 18.0;
-    var wHaste = getVal("weight_haste") || 10.0;
-
-    var score = 0;
-    var e = ench.effects || {};
-    score += (e.strength || 0) * wStr;
-    score += (e.agility || 0) * wAgi;
-    score += (e.attackPower || 0) * wAP;
-    score += (e.crit || 0) * wCrit;
-    score += (e.hit || 0) * wHit;
-    score += (e.haste || 0) * wHaste;
+    var wAP = 1.0;
+    var wStr = 2.4;
+    var wAgi = 2.5;
     
+    var score = 0;
+    var stats = ench.effects || {};
+    
+    score += (stats.strength || 0) * wStr;
+    score += (stats.agility || 0) * wAgi;
+    score += (stats.attackPower || 0) * wAP;
+
     return score;
 }
 
+// ----------------------------------------------------------------------------
+// STAT CALCULATION ENGINE
+// ----------------------------------------------------------------------------
 function calculateGearStats() {
-    // Base Stats
     var raceSel = document.getElementById("char_race");
     var raceName = raceSel ? raceSel.value : "Tauren";
     var baseStats = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
-    var stats = {
+    var cs = {
         str: baseStats.str,
         agi: baseStats.agi,
-        int: baseStats.int,
-        stam: baseStats.stam,
         ap: 0,
-        crit: baseStats.crit,
-        hit: baseStats.hit,
+        crit: 0,
+        hit: 0,
         haste: 0,
-        weaponDps: 0,
-        mana: 0
+        wepSkill: 300, // Fixed Feral Skill
+        wepDmgMin: 0,
+        wepDmgMax: 0
     };
 
-    // Gear Summation
     var setCounts = {};
+    var hasWolfshead = false;
+    var hasMCP = false;
+    var hasT05_4p = false;
 
+    // 2. ITEMS
     for (var slot in GEAR_SELECTION) {
         var id = GEAR_SELECTION[slot];
+        if (id && typeof id === 'object' && id.id) id = id.id;
+
         if (id && id !== 0) {
             var item = ITEM_ID_MAP[id];
             if (item) {
-                stats.str += (item.strength || 0);
-                stats.agi += (item.agility || 0);
-                stats.int += (item.intellect || 0);
-                stats.stam += (item.stamina || 0);
-                
                 var e = item.effects || {};
-                stats.ap += (e.attackPower || 0);
-                stats.hit += (e.hit || 0);
-                stats.crit += (e.crit || 0);
-                stats.haste += (e.haste || 0);
                 
-                // Turtle Feral AP on Weapons
-                if (slot === "Main Hand" || slot === "Two Hand" || slot === "One Hand") {
-                    stats.ap += (e.feralAttackPower || 0);
-                    // Base Weapon DPS Calculation
-                    if (item.minDmg && item.maxDmg && item.speed) {
-                        stats.weaponDps = ((item.minDmg + item.maxDmg) / 2) / item.speed;
-                    }
+                cs.str += (item.strength || 0);
+                cs.agi += (item.agility || 0);
+                cs.ap += (e.attackPower || 0);
+                cs.ap += (e.feralAttackPower || 0);
+
+                cs.crit += (e.crit || 0);
+                cs.hit += (e.hit || 0);
+                
+                // Track Weapon Damage if it's Main Hand (for potential Engine usage)
+                if (slot === "Main Hand") {
+                    // Engine will decide whether to use this or base paw damage
+                    // But we store it here
                 }
 
-                if (item.setName) {
-                    setCounts[item.setName] = (setCounts[item.setName] || 0) + 1;
+                // CUSTOM TEXT PARSING (Turtle WoW Custom Feral Items)
+                if (e.custom && Array.isArray(e.custom)) {
+                    e.custom.forEach(function(line) {
+                        // Regex for "+X Attack Power in Cat"
+                        var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
+                        if (matchAP) {
+                            if (line.includes("Cat") || line.includes("forms")) {
+                                cs.ap += parseInt(matchAP[1]);
+                            }
+                        }
+                        // Regex for "Increased Feral Combat +5" (Turtle Specific)
+                        // IGNORE Polearms/Maces as per user instruction
+                        var matchSkill = line.match(/Equip: Increased Feral Combat \+(\d+)/i);
+                        if (matchSkill) {
+                            cs.wepSkill += parseInt(matchSkill[1]);
+                        }
+                    });
                 }
+
+                // Track Sets
+                if (item.setName) {
+                    if (!setCounts[item.setName]) setCounts[item.setName] = 0;
+                    setCounts[item.setName]++;
+                }
+
+                // Special Flags
+                if (item.id === 8345) hasWolfshead = true;
+                if (item.id === 9449) hasMCP = true;
             }
         }
     }
 
-    // Set Bonuses
-    for (var setName in setCounts) {
-        var count = setCounts[setName];
-        var refItem = ITEM_DB.find(i => i.setName === setName);
-        if (refItem && refItem.setBonuses) {
-            Object.keys(refItem.setBonuses).forEach(k => {
-                if (count >= parseInt(k)) {
-                    var b = refItem.setBonuses[k];
-                    stats.ap += (b.attackPower || 0);
-                    stats.crit += (b.crit || 0);
-                    stats.hit += (b.hit || 0);
-                    stats.haste += (b.haste || 0);
-                }
-            });
-        }
-    }
-
-    // Enchants
+    // 3. ENCHANTS
     for (var slot in ENCHANT_SELECTION) {
         var eid = ENCHANT_SELECTION[slot];
         if (eid && eid !== 0) {
             var ench = ENCHANT_DB.find(e => e.id == eid);
             if (ench && ench.effects) {
-                stats.str += (ench.effects.strength || 0);
-                stats.agi += (ench.effects.agility || 0);
-                stats.int += (ench.effects.intellect || 0);
-                stats.ap += (ench.effects.attackPower || 0);
-                stats.crit += (ench.effects.crit || 0);
-                stats.hit += (ench.effects.hit || 0);
-                stats.haste += (ench.effects.haste || 0);
+                cs.str += (ench.effects.strength || 0);
+                cs.agi += (ench.effects.agility || 0);
+                cs.ap += (ench.effects.attackPower || 0);
+                cs.crit += (ench.effects.crit || 0);
+                cs.hit += (ench.effects.hit || 0);
+                cs.haste += (ench.effects.haste || 0);
             }
         }
     }
 
-    // --- BUFFS ---
-    if (getVal("buff_motw")) { stats.str += 16; stats.agi += 16; stats.int += 16; stats.stam += 16; }
-    if (getVal("buff_blessing_might")) { stats.ap += 185; }
-    if (getVal("buff_trueshot")) { stats.ap += 100; }
-    if (getVal("buff_str_scroll")) { stats.str += 20; } 
-    if (getVal("buff_agi_scroll")) { stats.agi += 20; }
-    if (getVal("buff_food")) { stats.str += 20; } 
-    if (getVal("buff_juju_power")) { stats.str += 30; }
-    if (getVal("buff_juju_might")) { stats.ap += 40; }
-    if (getVal("buff_mongoose")) { stats.agi += 25; stats.crit += 2; }
-    if (getVal("buff_giants")) { stats.str += 25; }
-    if (getVal("buff_winterfall")) { stats.str += 35; }
-    if (getVal("buff_leader")) { stats.crit += 3; }
-
-    // Multipliers (BoK +10%)
-    if (getVal("buff_bok") || getVal("buff_kings")) {
-        stats.str = Math.floor(stats.str * 1.10);
-        stats.agi = Math.floor(stats.agi * 1.10);
-        stats.int = Math.floor(stats.int * 1.10);
-        stats.stam = Math.floor(stats.stam * 1.10);
-    }
-
-    // Derived Stats (Cat Form)
-    // 1 Str = 2 AP
-    stats.ap += (stats.str * 2);
-    // 1 Agi = 1 AP
-    stats.ap += stats.agi;
-    // 20 Agi = 1% Crit
-    stats.crit += (stats.agi / 20);
+    // 4. BUFFS & CONSUMABLES
+    if (getVal("buff_motw")) { cs.str += 12; cs.agi += 12; }
+    if (getVal("buff_mongoose")) { cs.agi += 25; cs.crit += 2; }
+    if (getVal("buff_juju_power")) { cs.str += 30; }
+    if (getVal("buff_juju_might")) { cs.ap += 40; }
+    if (getVal("buff_winterfall")) { cs.str += 35; } 
+    if (getVal("buff_food_str")) { cs.str += 20; }
+    if (getVal("buff_food_agi")) { cs.agi += 20; }
+    if (getVal("buff_onyxia")) { cs.crit += 5; cs.ap += 140; }
+    if (getVal("buff_songflower")) { cs.str += 15; cs.agi += 15; cs.crit += 5; }
+    if (getVal("buff_warchief")) { cs.haste += 15; } 
     
-    // Mana
-    stats.mana = stats.int * 15;
+    if (getVal("buff_might")) { cs.ap += 222; }
+    if (getVal("buff_battle_shout")) { cs.ap += 290; }
+    if (getVal("buff_trueshot")) { cs.ap += 100; }
+    
+    // 5. MULTIPLIERS (Kings, Zandalar)
+    var statMod = 1.0;
+    if (getVal("buff_bok")) statMod *= 1.1;
+    if (getVal("buff_zandalar")) statMod *= 1.15;
+    
+    cs.str = Math.floor(cs.str * statMod);
+    cs.agi = Math.floor(cs.agi * statMod);
+    
+    // 6. DERIVED STATS
+    // 1 Str = 2 AP, 1 Agi = 1 AP
+    cs.ap += (cs.str * 2) + (cs.agi * 1);
+    
+    // 20 Agi = 1% Crit
+    var critFromAgi = cs.agi / 20.0;
+    cs.crit += critFromAgi;
+    
+    if (getVal("buff_leader_pack")) cs.crit += 3;
 
-    // --- UPDATE UI ---
+    // 7. SET BONUSES & UI FLAGS
+    if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
+
+    var elWolf = document.getElementById("meta_wolfshead"); if (elWolf) elWolf.checked = hasWolfshead;
+    var elMCP = document.getElementById("item_mcp"); if (elMCP) elMCP.checked = hasMCP;
+    var elT05 = document.getElementById("set_t05_4p"); if (elT05) elT05.checked = hasT05_4p;
+
+    // 8. UPDATE OUTPUT FIELDS
     var isManual = document.getElementById("manual_stats") ? document.getElementById("manual_stats").checked : false;
 
     var updateInput = function (id, val, isPct) {
@@ -680,19 +652,23 @@ function calculateGearStats() {
         }
     };
 
-    updateInput("stat_str", stats.str, false);
-    updateInput("stat_agi", stats.agi, false);
-    updateInput("stat_ap", stats.ap, false);
-    updateInput("stat_crit", stats.crit, true);
-    updateInput("stat_hit", stats.hit, true);
-    updateInput("stat_haste", stats.haste, true);
-    updateInput("stat_wps", stats.weaponDps, false);
-    updateInput("stat_int", stats.int, false);
-    updateInput("stat_mana", stats.mana, false);
-
-    // Note: GP stats preview text update is handled in UI file or HTML binding usually,
-    // but we can enforce it here if elements exist.
-    setText("gp_ap", Math.floor(stats.ap));
-    setText("gp_crit", stats.crit.toFixed(2) + "%");
-    setText("gp_hit", stats.hit.toFixed(2) + "%");
+    updateInput("stat_str", cs.str, false);
+    updateInput("stat_agi", cs.agi, false);
+    updateInput("stat_ap", cs.ap, false);
+    updateInput("stat_crit", cs.crit, true);
+    updateInput("stat_hit", cs.hit, false);
+    updateInput("stat_haste", cs.haste, false);
+    
+    // Update Weapon Skill in Input
+    updateInput("stat_wep_skill", cs.wepSkill, false); 
+    
+    // Preview Box
+    var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(cs.ap);
+    var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = cs.crit.toFixed(2) + "%";
+    var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = cs.hit.toFixed(2) + "%";
+    
+    // Default Feral Weapon Damage (Level 60 Paw) ~54-55 DPS?
+    // We set placeholder here, Engine will calculate.
+    updateInput("stat_wep_dmg_min", 55, false);
+    updateInput("stat_wep_dmg_max", 85, false);
 }

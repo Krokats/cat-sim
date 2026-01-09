@@ -1,5 +1,7 @@
 /**
  * Feral Simulation - File 4: UI Manager
+ * Updated for Turtle WoW 1.18 (Feral Cat)
+ * Handles Inputs, Logs, Charts, and Stats Display
  */
 
 // ============================================================================
@@ -7,441 +9,429 @@
 // ============================================================================
 
 function setupUIListeners() {
-    // Config Listeners
-    CONFIG_IDS.forEach(function (id) {
+    // Calc Method Toggle (Single vs DPM Map)
+    var methodSelect = document.getElementById('calcMethod');
+    var iterInput = document.getElementById('simCount');
+    if (methodSelect && iterInput) {
+        methodSelect.addEventListener('change', function () {
+            if (methodSelect.value === 'S') {
+                iterInput.disabled = false;
+                iterInput.parentElement.style.opacity = "1";
+            } else {
+                iterInput.disabled = true;
+                iterInput.parentElement.style.opacity = "0.5";
+            }
+            saveCurrentState();
+        });
+        if (methodSelect.value !== 'S') {
+            iterInput.disabled = true;
+            iterInput.parentElement.style.opacity = "0.5";
+        }
+    }
+
+    // Enemy Inputs
+    var enemyInputs = ['enemy_level', 'enemy_armor', 'enemy_can_bleed'];
+    enemyInputs.forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
             el.addEventListener('change', function () {
-                // Trigger calculation for Buffs OR Manual Stats Toggle OR Race
-                if (id.startsWith("buff_") || id === "manual_stats" || id === "char_race") {
-                    calculateGearStats();
-                }
+                updateEnemyInfo();
+                updatePlayerStats(); // Armor pen logic might change stats?
                 saveCurrentState();
             });
-            // Live update for armor to see DR change immediately
-            if(id === "enemy_armor") {
-                el.addEventListener('input', updateEnemyInfo);
-            }
+            el.addEventListener('input', updateEnemyInfo);
         }
     });
 
-    // Initial Enemy Info Update
-    updateEnemyInfo();
+    // Rotation / Config Inputs
+    var configInputs = [
+        "simTime", "rota_position", "rota_powershift", "rota_rake", 
+        "rota_bite", "rota_aggressive_shift", "mana_pool",
+        "buff_motw", "buff_bok", "buff_might", "buff_battle_shout",
+        "buff_leader_pack", "buff_trueshot", "buff_mongoose",
+        "buff_juju_power", "buff_juju_might", "buff_winterfall",
+        "buff_zandalar", "buff_onyxia", "buff_songflower", "buff_warchief",
+        "buff_food_str", "buff_food_agi"
+    ];
 
-    // Modal Close Listeners (Esc key and Click outside)
-    document.addEventListener('keydown', function (e) {
-        if (e.key === "Escape") {
-            closeItemModal();
-            closeEnchantModal();
-        }
-    });
-
-    var modals = document.querySelectorAll('.modal-overlay');
-    modals.forEach(function (modal) {
-        modal.addEventListener('mousedown', function (e) {
-            if (e.target === modal) {
-                closeItemModal();
-                closeEnchantModal();
-            }
-        });
-    });
-}
-
-function toggleCard(header) {
-    if(!header) return;
-    var card = header.closest('.card');
-    if(card) card.classList.toggle("collapsed");
-}
-
-// ============================================================================
-// MANAGEMENT & STATE
-// ============================================================================
-
-function getCurrentConfigFromUI() {
-    var cfg = {};
-    CONFIG_IDS.forEach(function (id) {
+    configInputs.forEach(function (id) {
         var el = document.getElementById(id);
-        if (el) { 
-            if (el.type === 'checkbox') cfg[id] = el.checked ? 1 : 0; 
-            else cfg[id] = el.value; 
-        }
+        if (el) el.addEventListener('change', saveCurrentState);
     });
 
-    // Deep copy objects to avoid reference issues
-    cfg.gearSelection = JSON.parse(JSON.stringify(GEAR_SELECTION || {}));
-    cfg.enchantSelection = JSON.parse(JSON.stringify(ENCHANT_SELECTION || {}));
-    
-    return cfg;
-}
+    // Run Button
+    var btn = document.getElementById('runSimBtn');
+    if (btn) btn.addEventListener('click', runSimulation);
 
-function applyConfigToUI(cfg) {
-    if (!cfg) return;
-
-    for (var id in cfg) {
-        if (id === 'gearSelection' || id === 'enchantSelection') continue;
-        var el = document.getElementById(id);
-        if (el) {
-            if (el.type === 'checkbox') el.checked = (cfg[id] == 1);
-            else el.value = cfg[id];
+    // Reset Button
+    var rst = document.getElementById('resetBtn');
+    if (rst) rst.addEventListener('click', function () {
+        if (confirm("Reset all settings and gear?")) {
+            resetGear();
+            location.reload(); 
         }
-    }
-
-    GEAR_SELECTION = cfg.gearSelection || {};
-    ENCHANT_SELECTION = cfg.enchantSelection || {};
-
-    if (typeof initGearPlannerUI === 'function') {
-        initGearPlannerUI();
-    }
-    
-    // Trigger Calculations to update UI numbers
-    calculateGearStats();
-    updateEnemyInfo();
+    });
 }
-
-function saveCurrentState() {
-    if (SIM_LIST[ACTIVE_SIM_INDEX]) {
-        SIM_LIST[ACTIVE_SIM_INDEX].config = getCurrentConfigFromUI();
-        var nameInput = document.getElementById('simName');
-        if (nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
-    }
-}
-
-function addSim(isFirst) {
-    if (!isFirst) saveCurrentState();
-    var newId = Date.now();
-    var newName = isFirst ? "Feral Sim 1" : "Feral Sim " + (SIM_LIST.length + 1);
-    var newSim = new SimObject(newId, newName);
-
-    // Copy current config or load fresh
-    if (!isFirst && SIM_LIST.length > 0) {
-        newSim.config = JSON.parse(JSON.stringify(SIM_LIST[ACTIVE_SIM_INDEX].config));
-    } else {
-        newSim.config = getCurrentConfigFromUI();
-    }
-
-    SIM_LIST.push(newSim);
-
-    if (!isFirst) {
-        switchSim(SIM_LIST.length - 1);
-    } else {
-        renderSidebar();
-    }
-}
-
-function deleteSim(index) {
-    if (!confirm("Delete Simulation?")) return;
-    SIM_LIST.splice(index, 1);
-    if (SIM_LIST.length === 0) { 
-        addSim(true); 
-        return; 
-    }
-    
-    if (index === ACTIVE_SIM_INDEX) { 
-        ACTIVE_SIM_INDEX = Math.max(0, index - 1); 
-    } else if (index < ACTIVE_SIM_INDEX) { 
-        ACTIVE_SIM_INDEX--; 
-    }
-    
-    renderSidebar(); 
-    switchSim(ACTIVE_SIM_INDEX); 
-    showToast("Deleted");
-}
-
-function switchSim(index) {
-    saveCurrentState();
-    ACTIVE_SIM_INDEX = index;
-
-    var s = SIM_LIST[index];
-    var nameInput = document.getElementById('simName');
-    if (nameInput) {
-        nameInput.value = s.name;
-    }
-
-    applyConfigToUI(s.config);
-
-    // Results are always visible now, we just update or clear them
-    if (s.results) {
-        SIM_DATA = s.results;
-        switchView('avg'); // Default to average view
-    } else {
-        SIM_DATA = null;
-        clearResultsUI();
-    }
-    
-    renderSidebar();
-}
-
-function updateSimName() {
-    if (SIM_LIST[ACTIVE_SIM_INDEX]) {
-        SIM_LIST[ACTIVE_SIM_INDEX].name = document.getElementById('simName').value;
-        renderSidebar();
-    }
-}
-
-function renderSidebar() { 
-    var c = document.getElementById('sidebar'); 
-    if (!c) return; 
-    
-    var html = ''; 
-    // Removed Overview Button for simpler layout, focus on Sim List
-    
-    SIM_LIST.forEach(function (sim, idx) { 
-        var a = (idx === ACTIVE_SIM_INDEX) ? 'active' : ''; 
-        html += '<div class="sidebar-btn ' + a + '" onclick="switchSim(' + idx + ')" title="' + sim.name + '">' + (idx + 1) + '</div>'; 
-    }); 
-    html += '<div class="sidebar-btn btn-add" onclick="addSim(false)">+</div>'; 
-    c.innerHTML = html; 
-}
-
-// ============================================================================
-// VIEW RENDERING (RESULTS)
-// ============================================================================
-
-function clearResultsUI() {
-    setText("out_dps_main", "-");
-    setText("out_total_dmg", "-");
-    setText("out_shifts", "-");
-    setText("out_cp_waste", "-");
-    
-    var tbody = document.getElementById("tbl_body");
-    if (tbody) tbody.innerHTML = "<tr><td colspan='4' class='text-center muted'>No simulation run yet.</td></tr>";
-
-    var logBody = document.getElementById("logBody");
-    if (logBody) logBody.innerHTML = "<tr><td colspan='9' class='text-center muted'>No log available.</td></tr>";
-
-    // Clear Weights
-    setText("res_weight_ap", "-");
-    setText("res_weight_str", "-");
-    setText("res_weight_agi", "-");
-    setText("res_weight_crit", "-");
-    setText("res_weight_hit", "-");
-    setText("res_weight_haste", "-");
-}
-
-function switchView(type) {
-    if (!SIM_DATA) return;
-    CURRENT_VIEW = type;
-
-    // Update Buttons
-    var btns = document.querySelectorAll('.view-btn');
-    btns.forEach(b => b.classList.remove('active'));
-    var activeBtn = document.getElementById('view' + type.charAt(0).toUpperCase() + type.slice(1));
-    if(activeBtn) activeBtn.classList.add('active');
-
-    var data = SIM_DATA[type]; // avg, min, or max
-
-    // Update Big Numbers
-    setText("out_dps_main", data.dps.toFixed(1));
-    setText("out_total_dmg", Math.floor(data.totalDmg).toLocaleString());
-    setText("out_shifts", data.stats.casts_shift.toFixed(1));
-    setText("out_cp_waste", data.stats.cp_wasted.toFixed(1));
-
-    // Update Damage Breakdown Table
-    var tbody = document.getElementById("tbl_body");
-    if (tbody) {
-        tbody.innerHTML = "";
-        var list = [
-            { name: "Melee (White)", val: data.stats.dmg_white },
-            { name: "Shred", val: data.stats.dmg_shred },
-            { name: "Claw", val: data.stats.dmg_claw },
-            { name: "Ferocious Bite", val: data.stats.dmg_bite },
-            { name: "Rip (DoT)", val: data.stats.dmg_rip },
-            { name: "Rake", val: data.stats.dmg_rake + data.stats.dmg_rake_init }
-        ];
-
-        // Sort by damage descending
-        list.sort((a, b) => b.val - a.val);
-
-        list.forEach(item => {
-            if (item.val > 0) {
-                var pct = (item.val / data.totalDmg) * 100;
-                var barColor = "var(--feral-orange)";
-                // Special colors
-                if (item.name.includes("Rip") || item.name.includes("Rake")) barColor = "#d32f2f"; // Bleed
-                if (item.name.includes("White")) barColor = "#aaa"; 
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="text-left">${item.name}</td>
-                        <td class="text-right">${Math.floor(item.val).toLocaleString()}</td>
-                        <td class="text-right">${pct.toFixed(1)}%</td>
-                        <td class="bar-col">
-                            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background-color:${barColor}"></div></div>
-                        </td>
-                    </tr>
-                `;
-            }
-        });
-    }
-
-    // Update Stat Weights (if available)
-    if (SIM_DATA.weights) {
-        setText("res_weight_ap", "1.00");
-        setText("res_weight_str", SIM_DATA.weights.str.toFixed(2));
-        setText("res_weight_agi", SIM_DATA.weights.agi.toFixed(2));
-        setText("res_weight_crit", SIM_DATA.weights.crit.toFixed(2));
-        setText("res_weight_hit", SIM_DATA.weights.hit.toFixed(2));
-        setText("res_weight_haste", SIM_DATA.weights.haste.toFixed(2));
-    } else {
-        setText("res_weight_ap", "-");
-        setText("res_weight_str", "-");
-        setText("res_weight_agi", "-");
-        setText("res_weight_crit", "-");
-        setText("res_weight_hit", "-");
-        setText("res_weight_haste", "-");
-    }
-
-    // Render Log
-    renderCombatLog(data.log);
-}
-
-function renderCombatLog(log) {
-    var b = document.getElementById("logBody");
-    if (!b) return;
-    b.innerHTML = "";
-    
-    if (!log || log.length === 0) {
-        b.innerHTML = "<tr><td colspan='9' class='text-center muted'>No log available.</td></tr>";
-        return;
-    }
-
-    // Limit log size for performance
-    var limit = Math.min(log.length, 300);
-    
-    for (var i = 0; i < limit; i++) {
-        var e = log[i];
-        var rowClass = "";
-        if (e.evt === "Damage") rowClass = "log-dmg";
-        if (e.evt === "Cast") rowClass = "log-cast";
-
-        // Result formatting
-        var resHtml = e.result || "";
-        if (e.result === "CRIT") resHtml = "<span class='crit'>CRIT</span>";
-        else if (e.result === "GLANCE") resHtml = "<span class='glance'>GLANCE</span>";
-        else if (e.result === "MISS") resHtml = "<span class='miss'>MISS</span>";
-        else if (e.result === "DODGE") resHtml = "<span class='miss'>DODGE</span>";
-
-        b.innerHTML += `
-            <tr class="${rowClass}">
-                <td class="mono">${e.t.toFixed(3)}</td>
-                <td>${e.source}</td>
-                <td>${e.evt}</td>
-                <td class="mono">${resHtml}</td>
-                <td class="text-right mono">${Math.floor(e.amount)}</td>
-                <td class="text-center" style="color:#fbc02d">${e.energy}</td>
-                <td class="text-center" style="color:#ff5722; font-weight:bold;">${e.cp}</td>
-                <td class="text-center" style="color:#4fc3f7">${e.mana}</td>
-                <td class="info-col">${e.info || ""}</td>
-            </tr>
-        `;
-    }
-}
-
-// ============================================================================
-// UI HELPER FUNCTIONS
-// ============================================================================
 
 function updateEnemyInfo() {
-    var armor = getVal("enemy_armor");
-    // DR Formula: Armor / (Armor + 5500) for Lvl 60 attacker (standard simplification)
-    // 5500 = 400 + 85 * 60
-    var dr = armor / (armor + 5500);
+    var lvl = getVal('enemy_level');
+    var armor = getVal('enemy_armor');
+    var bleed = getVal('enemy_can_bleed');
     
-    var el = document.getElementById("info_dr");
-    if(el) el.innerText = "DR: " + (dr * 100).toFixed(2) + "%";
+    setText('sumLvl', lvl);
+    setText('sumArmor', armor);
+    
+    var infoText = "";
+    if (!bleed) infoText += "Immune to Bleed. ";
+    
+    // Calculate Damage Reduction from Armor (Standard Vanilla Formula)
+    // DR% = Armor / (Armor + 400 + 85 * (AttackerLevel + 4.5 * (AttackerLevel - 59)))
+    // Assuming Attacker Lvl 60: 400 + 85 * (60 + 4.5) = 400 + 85 * 64.5 = 400 + 5482.5 = 5882.5
+    // DR = Armor / (Armor + 5882.5)
+    var dr = armor / (armor + 5882.5);
+    var drPct = (dr * 100).toFixed(1);
+    
+    setText('sumRes', drPct + "% Phys DR");
+}
+
+/**
+ * Updates the Sidebar "Player Stats" summary based on Gear + Buffs
+ */
+function updatePlayerStats() {
+    // Trigger calculation in gear.js (updates the hidden inputs)
+    calculateGearStats(); 
+
+    // Read back the calculated values from inputs
+    var str = parseFloat(document.getElementById("stat_str").value) || 0;
+    var agi = parseFloat(document.getElementById("stat_agi").value) || 0;
+    var ap = parseFloat(document.getElementById("stat_ap").value) || 0;
+    var crit = parseFloat(document.getElementById("stat_crit").value) || 0;
+    var hit = parseFloat(document.getElementById("stat_hit").value) || 0;
+    var haste = parseFloat(document.getElementById("stat_haste").value) || 0;
+    
+    // Update Sidebar Text
+    setText("sumAP", Math.floor(ap));
+    setText("sumCrit", crit.toFixed(2) + "%");
+    setText("sumHit", hit.toFixed(2) + "%");
+    setText("sumHaste", haste.toFixed(2) + "%");
+    
+    // Update Rotation List Summary
+    var list = document.getElementById("sumRotaList");
+    if (list) {
+        list.innerHTML = "";
+        var addLi = function(txt, col) { 
+            var li = document.createElement("li"); 
+            li.innerText = txt; 
+            if(col) li.style.color = col;
+            list.appendChild(li); 
+        };
+
+        if (getVal("rota_powershift")) addLi("Powershifting: ON", "#4caf50");
+        else addLi("Powershifting: OFF", "#f44336");
+        
+        if (getVal("rota_position") === "back") addLi("Pos: Behind (Shred)", "#ff9800");
+        else addLi("Pos: Front (Claw)", "#ff5722");
+
+        if (getVal("rota_bite")) addLi("Finisher: Bite", "#ff9800");
+        else addLi("Finisher: Rip Only", "#ff5722");
+    }
+
+    // Update Gear List Summary (Trinkets & Idols)
+    var tList = document.getElementById("sumTrinketList");
+    if (tList) {
+        tList.innerHTML = "";
+        var t1 = GEAR_SELECTION["Trinket 1"];
+        var t2 = GEAR_SELECTION["Trinket 2"];
+        var idol = GEAR_SELECTION["Idol"];
+        
+        var addItemLi = function(id) {
+            if(!id) return;
+            var it = ITEM_ID_MAP[id];
+            if(it) {
+                var li = document.createElement("li");
+                li.innerText = it.name;
+                li.style.color = "#a0a0a0";
+                tList.appendChild(li);
+            }
+        };
+        addItemLi(t1);
+        addItemLi(t2);
+        addItemLi(idol);
+    }
 }
 
 // ============================================================================
-// IMPORT / EXPORT (CLIPBOARD)
+// SIMULATION RESULT RENDERING
 // ============================================================================
 
-function packConfig(cfg) {
-    // Similar to previous implementation, optimized
-    var values = CONFIG_IDS.map(function (id) { return cfg[id]; });
-    return { d: values, g: cfg.gearSelection, e: cfg.enchantSelection };
+function updateSimulationResults(sim) {
+    if (!sim || !sim.results) return;
+    var r = sim.results;
+    var resDiv = document.getElementById("simResultsArea");
+    if (!resDiv) return;
+    resDiv.classList.remove("hidden");
+
+    // 1. DPS & Summary
+    setText("resDps", Math.floor(r.dps));
+    setText("resDuration", r.duration + "s");
+    setText("resTotalDmg", (r.totalDmg / 1000).toFixed(1) + "k");
+    
+    // Mana/Energy Usage (If tracked)
+    // For Feral: Show Powershifts count?
+    var shifts = r.casts ? (r.casts["Powershift"] || 0) : 0;
+    setText("resMana", shifts + " Shifts"); 
+
+    // 2. Damage Distribution Bar
+    var barContainer = document.getElementById("dmgDistBar");
+    if (barContainer) {
+        barContainer.innerHTML = "";
+        var total = r.totalDmg;
+        
+        // Define Colors for Abilities
+        var colors = {
+            "Auto Attack": "#ffffff",
+            "Shred": "#ffeb3b", // Yellow
+            "Claw": "#ff9800", // Orange
+            "Rake": "#f44336", // Red
+            "Rip": "#d32f2f", // Dark Red
+            "Ferocious Bite": "#ff5722", // Deep Orange
+            "Swipe": "#9e9e9e"
+        };
+
+        // Sort sources by damage
+        var sources = [];
+        for (var k in r.dmgSources) {
+            sources.push({ name: k, dmg: r.dmgSources[k] });
+        }
+        sources.sort(function (a, b) { return b.dmg - a.dmg; });
+
+        sources.forEach(function (s) {
+            var pct = (s.dmg / total) * 100;
+            if (pct < 0.5) return;
+            var seg = document.createElement("div");
+            seg.className = "dist-segment";
+            seg.style.width = pct + "%";
+            seg.style.backgroundColor = colors[s.name] || "#777";
+            seg.title = s.name + ": " + Math.floor(s.dmg) + " (" + pct.toFixed(1) + "%)";
+            barContainer.appendChild(seg);
+        });
+    }
+
+    // 3. Detailed Table
+    var tbody = document.getElementById("resTableBody");
+    if (tbody) {
+        tbody.innerHTML = "";
+        sources.forEach(function (s) {
+            var row = document.createElement("tr");
+            var nameCol = "<td>" + s.name + "</td>";
+            
+            // Stats from result object
+            var count = r.counts[s.name] || 0;
+            var critCount = r.critCounts[s.name] || 0;
+            var missCount = r.missCounts[s.name] || 0;
+            var glanceCount = r.glanceCounts[s.name] || 0;
+            var dodgeCount = r.dodgeCounts[s.name] || 0;
+            
+            var hitPct = count > 0 ? ((count - missCount - dodgeCount) / count * 100).toFixed(1) : "0.0";
+            var critPct = (count - missCount - dodgeCount) > 0 ? (critCount / (count - missCount - dodgeCount) * 100).toFixed(1) : "0.0";
+            var glancePct = (s.name === "Auto Attack" && count > 0) ? (glanceCount / count * 100).toFixed(1) : "-";
+
+            var dps = (s.dmg / r.duration).toFixed(1);
+            var pct = ((s.dmg / total) * 100).toFixed(1);
+
+            row.innerHTML = 
+                "<td style='color:" + (colors[s.name] || "#ccc") + "'>" + s.name + "</td>" +
+                "<td>" + Math.floor(s.dmg).toLocaleString() + "</td>" +
+                "<td>" + dps + "</td>" +
+                "<td>" + pct + "%</td>" +
+                "<td>" + count + "</td>" +
+                "<td>" + critPct + "%</td>" +
+                "<td>" + glancePct + "%</td>";
+            tbody.appendChild(row);
+        });
+    }
+
+    // 4. Log Render
+    renderLogTable(r.log);
 }
 
-function unpackConfig(packed) {
-    if(!packed || !packed.d) return packed; // Legacy fallback
-    var cfg = {};
-    CONFIG_IDS.forEach(function (id, idx) {
-        if (idx < packed.d.length) cfg[id] = packed.d[idx];
+// ============================================================================
+// LOG RENDERING
+// ============================================================================
+
+var CURRENT_PAGE = 1;
+var ROWS_PER_PAGE = 50;
+var LOG_DATA = [];
+
+function renderLogTable(log) {
+    LOG_DATA = log || [];
+    CURRENT_PAGE = 1;
+    updateLogPagination();
+}
+
+function updateLogPagination() {
+    var tbody = document.getElementById("logTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    var start = (CURRENT_PAGE - 1) * ROWS_PER_PAGE;
+    var end = start + ROWS_PER_PAGE;
+    var pageData = LOG_DATA.slice(start, end);
+
+    pageData.forEach(function (entry) {
+        var row = document.createElement("tr");
+        
+        // Colors for Events
+        var color = "#ccc";
+        if (entry.event === "Damage") color = "#fff";
+        if (entry.event === "Cast") color = "#ffd700"; // Gold
+        if (entry.event === "Buff") color = "#4caf50"; // Green
+        if (entry.event === "Tick") color = "#81d4fa"; // Energy tick blue-ish
+        if (entry.event === "Error") color = "#f44336";
+
+        // Ability Color
+        var abColor = "#ccc";
+        if (entry.ability === "Shred") abColor = "#ffeb3b";
+        if (entry.ability === "Auto Attack") abColor = "#fff";
+        if (entry.ability === "Ferocious Bite") abColor = "#ff5722";
+        if (entry.ability.includes("Rip") || entry.ability.includes("Rake")) abColor = "#d32f2f"; // Bleed
+        
+        // Result Formatting
+        var resTxt = entry.result || "";
+        if (resTxt.includes("CRIT")) resTxt = "<span style='color:#ff0; font-weight:bold;'>" + resTxt + "</span>";
+        if (resTxt.includes("GLANCE")) resTxt = "<span style='color:#aaa; font-style:italic;'>" + resTxt + "</span>";
+        if (resTxt.includes("MISS") || resTxt.includes("DODGE")) resTxt = "<span style='color:#f44336;'>" + resTxt + "</span>";
+
+        row.innerHTML = 
+            "<td>" + entry.t.toFixed(3) + "</td>" +
+            "<td style='color:" + color + "'>" + entry.event + "</td>" +
+            "<td style='color:" + abColor + "'>" + entry.ability + "</td>" +
+            "<td>" + resTxt + "</td>" +
+            "<td>" + (entry.dmg > 0 ? Math.floor(entry.dmg) : "") + "</td>" +
+            "<td style='color:#ffeb3b'>" + Math.floor(entry.energy) + "</td>" + // Energy
+            "<td style='color:#ff9800'>" + entry.cp + "</td>" + // CP
+            "<td style='color:#81d4fa'>" + Math.floor(entry.mana) + "</td>" + // Mana
+            "<td style='font-size:0.85rem; color:#777;'>" + (entry.info || "") + "</td>";
+
+        tbody.appendChild(row);
     });
-    cfg.gearSelection = packed.g || {};
-    cfg.enchantSelection = packed.e || {};
-    return cfg;
+
+    setText("logPageLabel", "Page " + CURRENT_PAGE + " / " + Math.ceil(LOG_DATA.length / ROWS_PER_PAGE));
 }
 
+function prevLogPage() {
+    if (CURRENT_PAGE > 1) { CURRENT_PAGE--; updateLogPagination(); }
+}
+
+function nextLogPage() {
+    var max = Math.ceil(LOG_DATA.length / ROWS_PER_PAGE);
+    if (CURRENT_PAGE < max) { CURRENT_PAGE++; updateLogPagination(); }
+}
+
+// ============================================================================
+// EXPORT / IMPORT / CSV
+// ============================================================================
+
+function generateCSV(simResult) {
+    if (!simResult || !simResult.log) return "";
+    var csv = "Time,Event,Ability,Result,Damage,Energy,CP,Mana,Info\n";
+    simResult.log.forEach(function (r) {
+        var line = [
+            r.t.toFixed(3),
+            r.event,
+            r.ability,
+            r.result,
+            Math.floor(r.dmg),
+            Math.floor(r.energy),
+            r.cp,
+            Math.floor(r.mana),
+            '"' + (r.info || "") + '"'
+        ];
+        csv += line.join(",") + "\n";
+    });
+    return csv;
+}
+
+function downloadCSV() {
+    if (!SIM_DATA) return;
+    var csvContent = "data:text/csv;charset=utf-8," + generateCSV(SIM_DATA.results);
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "feral_sim_log.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Save/Load Logic (Generic)
+function saveCurrentState() {
+    // Collect Config
+    var config = {};
+    CONFIG_IDS.forEach(function (id) {
+        config[id] = getVal(id);
+        // Handle strings for dropdowns
+        var el = document.getElementById(id);
+        if(el && el.tagName === "SELECT") config[id] = el.value;
+    });
+
+    // Collect Gear
+    config.gear = GEAR_SELECTION;
+    config.enchants = ENCHANT_SELECTION;
+
+    var s = JSON.stringify(config);
+    localStorage.setItem("krokatFeralSimSave", s);
+    // Debounced Sim Run could happen here
+}
+
+function loadSavedState() {
+    var s = localStorage.getItem("krokatFeralSimSave");
+    if (s) {
+        try {
+            var c = JSON.parse(s);
+            // Apply Config
+            CONFIG_IDS.forEach(function (id) {
+                if (c[id] !== undefined) {
+                    var el = document.getElementById(id);
+                    if (el) {
+                        if (el.type === "checkbox") el.checked = (c[id] == 1);
+                        else el.value = c[id];
+                    }
+                }
+            });
+            // Apply Gear
+            if (c.gear) GEAR_SELECTION = c.gear;
+            if (c.enchants) ENCHANT_SELECTION = c.enchants;
+            
+            initGearPlannerUI();
+            updatePlayerStats();
+            updateEnemyInfo();
+        } catch (e) {
+            console.error("Save Load Error", e);
+        }
+    }
+}
+
+// Export Settings to Text
 function exportSettings() {
     saveCurrentState();
-    var sim = SIM_LIST[ACTIVE_SIM_INDEX];
-    if (!sim) return;
-    
-    var data = { n: sim.name, c: packConfig(sim.config) };
-    var jsonStr = JSON.stringify(data);
-    
-    var compressed = "";
-    if (typeof LZString !== 'undefined') {
-        compressed = LZString.compressToEncodedURIComponent(jsonStr);
-    } else {
-        compressed = btoa(jsonStr);
-    }
-    
-    // Add dummy query param
-    var url = window.location.href.split('?')[0] + "?s=" + compressed;
-    navigator.clipboard.writeText(url).then(function() {
-        showToast("Link copied to clipboard!");
-    }, function() {
-        showToast("Failed to copy link.");
-    });
-}
-
-function importFromClipboard() {
-    var input = prompt("Paste the config link or string:");
-    if(!input) return;
-    
-    var str = input;
-    if(input.includes("?s=")) str = input.split("?s=")[1];
-    
-    try {
-        var json = null;
-        if (typeof LZString !== 'undefined') {
-            json = LZString.decompressFromEncodedURIComponent(str);
-        }
-        if(!json) json = atob(str); // Try legacy base64
-        
-        var data = JSON.parse(json);
-        
-        var s = new SimObject(Date.now(), (data.n || "Imported") + " (Imp)");
-        s.config = unpackConfig(data.c || data); // Handle both packed and legacy
-        
-        SIM_LIST.push(s);
-        switchSim(SIM_LIST.length - 1);
-        showToast("Import Successful!");
-        
-    } catch(e) {
-        console.error(e);
-        alert("Invalid Config String!");
-    }
+    var s = localStorage.getItem("krokatFeralSimSave");
+    var compressed = LZString.compressToBase64(s);
+    prompt("Copy this string:", compressed);
 }
 
 function importSettings() {
-    // Check URL on load
-    var params = new URLSearchParams(window.location.search);
-    if(params.has('s')) {
-        // Delay slightly to ensure DB load if needed, or handle in Init
-        var str = params.get('s');
+    var s = prompt("Paste settings string:");
+    if (s) {
         try {
-            var json = LZString.decompressFromEncodedURIComponent(str);
-            var data = JSON.parse(json);
-            
-            // Overwrite first sim
-            if(SIM_LIST.length > 0) {
-                SIM_LIST[0].name = data.n || "Imported";
-                SIM_LIST[0].config = unpackConfig(data.c || data);
-                // Apply happens in Init
+            var decomp = LZString.decompressFromBase64(s);
+            if(decomp) {
+                localStorage.setItem("krokatFeralSimSave", decomp);
+                loadSavedState();
+                showToast("Settings Imported!");
+            } else {
+                showToast("Invalid String");
             }
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } catch(e) { console.error("URL Import Error", e); }
+        } catch(e) { showToast("Import Error"); }
     }
 }
