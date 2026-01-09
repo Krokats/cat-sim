@@ -39,6 +39,10 @@ var CONFIG_IDS = [
     "rota_bite",          // Use Ferocious Bite at 5 CP
     "rota_aggressive_shift", // Ignore energy tick timer
 
+    // Talents (New)
+    "tal_ferocity", "tal_feral_aggression", "tal_imp_shred", 
+    "tal_furor", "tal_nat_shapeshifter", "tal_berserk",
+
     // Gear Specifics / Sets (Auto-detected or Manual)
     "set_t05_4p",         // Energy restore proc
     "meta_wolfshead",     // Wolfshead Helm effect
@@ -59,10 +63,9 @@ var SLOT_LAYOUT = {
 };
 
 // Base Stats (Level 60 - Approximate Vanilla Values)
-// Turtle WoW might have slight variations, but these serve as baselines before gear.
 const RACE_STATS = {
-    "Tauren":   { str: 85, agi: 55, sta: 82, int: 45, wis: 52 }, // High Str
-    "NightElf": { str: 67, agi: 85, sta: 72, int: 55, wis: 60 }  // High Agi
+    "Tauren":   { str: 85, agi: 55, sta: 82, int: 45, wis: 52 }, 
+    "NightElf": { str: 67, agi: 85, sta: 72, int: 55, wis: 60 }
 };
 
 // Combat Constants
