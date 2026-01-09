@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krokat's Feral Sim (Turtle WoW)</title>
+    <title>Krokat's Feral Sim (Turtle WoW 1.18)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap"
         rel="stylesheet">
@@ -16,7 +16,7 @@
 
 <body>
 
-    <div class="background-orb" style="background: radial-gradient(circle, rgba(255, 69, 0, 0.15) 0%, rgba(18, 18, 18, 0) 70%);"></div>
+    <div class="background-orb"></div>
     <div id="toast" class="toast">Action Successful!</div>
 
     <div id="progressOverlay" class="progress-overlay hidden">
@@ -36,8 +36,8 @@
 
                 <header>
                     <div class="header-title-row">
-                        <div class="header-avatar" style="background: #ff7d0a; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🐾</div>
-                        <h1>Krokat's Feral Sim <span style="font-size:0.5em; color:#888;">1.18</span></h1>
+                        <img src="Krokat.png" alt="Krokat" class="header-avatar">
+                        <h1>Krokat's Feralsim <span style="font-size:0.6em; color:#888">1.18</span></h1>
                     </div>
                     <input type="text" id="simName" class="sim-name-input" value="Simulation 1"
                         onchange="updateSimName()">
@@ -75,7 +75,6 @@
                 <div id="wowTooltip" class="wow-tooltip"></div>
 
                 <div id="simulationViewWrapper">
-                    
                     <div id="comparisonView" class="hidden">
                         <div class="card full-width">
                             <div class="card-header">
@@ -123,31 +122,22 @@
                                         <div class="char-left" id="charLeftCol"></div>
 
                                         <div class="char-middle">
-                                            <h2 style="margin-bottom:10px; font-size:1rem;">Stat Weights (EP Calc)</h2>
+                                            <h2 style="margin-bottom:10px; font-size:1rem;">Stat Weights (EP)</h2>
                                             <div class="gp-stats-config">
-                                                <div class="gp-input-group"><label>Str</label><input type="number"
-                                                        id="weight_str" value="2.4" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>Agi</label><input type="number"
-                                                        id="weight_agi" value="2.5" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>AP</label><input type="number"
-                                                        id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>Crit</label><input type="number"
-                                                        id="weight_crit" value="22.0" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>Hit</label><input type="number"
-                                                        id="weight_hit" value="18.0" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Str</label><input type="number" id="weight_str" value="2.4" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Agi</label><input type="number" id="weight_agi" value="2.5" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>AP</label><input type="number" id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Crit</label><input type="number" id="weight_crit" value="22.0" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Hit</label><input type="number" id="weight_hit" value="18.0" onchange="recalcItemScores()"></div>
                                             </div>
 
                                             <h2 style="margin:20px 0 10px 0; font-size:1rem;">Current Gear Stats</h2>
-                                            <div class="gp-stats-preview"
-                                                style="background:transparent; border:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                                            <div class="gp-stats-preview" style="background:transparent; border:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:10px;">
 
                                                 <div style="background: rgba(255, 69, 0, 0.15); border: 1px solid var(--druid-orange); padding: 10px 20px; border-radius: 8px; text-align: center; width: 100%;">
-                                                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">
-                                                        Gear Score (EP)</div>
-                                                    <div id="gp_gs" style="font-size: 2rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255, 125, 10, 0.5);">
-                                                        0</div>
-                                                    <div style="font-size: 0.65rem; color: #666; margin-top: -5px;">
-                                                        (Items + Sets only)</div>
+                                                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Gear Score (EP)</div>
+                                                    <div id="gp_gs" style="font-size: 2rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255, 69, 0, 0.5);">0</div>
+                                                    <div style="font-size: 0.65rem; color: #666; margin-top: -5px;">(Items + Sets only)</div>
                                                 </div>
 
                                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%;">
@@ -170,11 +160,9 @@
                                                 <button onclick="resetGear()" class="btn-mini" style="background:#333; width:100%;">Reset Gear</button>
                                             </div>
                                             <div id="dbStatus" style="font-size:0.65rem; color:#666; margin-top:10px;">DB not loaded</div>
-                                            
                                             <div class="char-bottom" id="charBottomRow"></div>
 
                                         </div>
-                                        
                                         <div class="char-right" id="charRightCol"></div>
                                     </div>
                                 </div>
@@ -230,7 +218,7 @@
                                                 <h2>⚙️ General</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Fight Duration (s)</label><input type="number" id="simTime" value="60"></div>
+                                                <div class="input-group"><label>Duration (sec)</label><input type="number" id="simTime" value="60"></div>
                                                 <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="1000"></div>
                                                 <div class="input-group"><label>Calculation Method</label>
                                                     <div class="select-wrapper"><select id="calcMethod">
@@ -238,13 +226,15 @@
                                                             <option value="S">Detailed Log (1 Run)</option>
                                                         </select></div>
                                                 </div>
+                                                <input type="hidden" id="weight_calcMethod" value="S">
+                                                <input type="hidden" id="weight_simCount" value="2000">
                                             </div>
                                         </div>
 
                                         <div class="card full-width-mobile">
                                             <div class="card-header">
                                                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                                    <h2>📊 Player Stats (Active)</h2>
+                                                    <h2>📊 Player Stats (Total)</h2>
                                                     <label class="toggle" style="transform: scale(0.7); margin:0;">
                                                         <input type="checkbox" id="manual_stats">
                                                         <span class="slider"></span>
@@ -277,14 +267,17 @@
                                                         <div class="input-wrapper"><label>Haste %</label><input type="number" id="stat_haste" disabled></div>
                                                     </div>
                                                 </div>
-                                                <div class="input-group" style="margin-top:15px; margin-bottom:0;">
+                                                <div class="input-group" style="margin-top:15px;">
                                                     <label>Weapon Skill</label><input type="number" id="stat_wep_skill" value="300" disabled>
                                                 </div>
-                                                <div class="input-group" style="margin-top:15px; margin-bottom:0;">
+                                                <div class="input-group">
                                                     <label>Mana Pool</label><input type="number" id="mana_pool" value="3000">
                                                 </div>
                                                 <input type="hidden" id="stat_wep_dmg_min" value="55">
                                                 <input type="hidden" id="stat_wep_dmg_max" value="85">
+                                            </div>
+                                            <div id="manualStatsWarning" class="hidden" style="background: rgba(255, 152, 0, 0.15); border: 1px solid #ff9800; color: #ff9800; padding: 6px 10px; margin: 10px 15px 0 15px; border-radius: 4px; font-size: 0.75rem; text-align: center;">
+                                                ⚠️ Manual Mode: Stats are not calculated from Gear!
                                             </div>
                                         </div>
 
@@ -351,7 +344,7 @@
                         <div class="action-area-wrapper" style="display:flex; flex-direction:column; align-items:center; gap:10px; margin: 20px 0;">
                             <div class="button-row" style="display:flex; gap:15px;">
                                 <button id="btnRun" onclick="runSimulation()" class="primary-btn"><span class="btn-icon">⚡</span> Run Simulation</button>
-                                <button id="btnWeights" class="blue-btn" title="Coming soon"><span class="btn-icon">⚖️</span> Stat Weights</button>
+                                <button id="btnWeights" class="blue-btn" title="Stat Weights"><span class="btn-icon">⚖️</span> Stat Weights</button>
                             </div>
                         </div>
 
@@ -384,16 +377,6 @@
                                     </div>
                                     <div class="stat-box">
                                         <h3>Shifts</h3><span id="resMana" class="med-number" style="color:#81d4fa;">0</span>
-                                    </div>
-                                </div>
-
-                                <div id="weightResults" class="hidden">
-                                    <div class="gear-section-title" style="margin-top:0;">Stat Weights (EP Values)</div>
-                                    <div class="stats-grid">
-                                        <div class="stat-box" style="border-color: #333; background: #252525;"><h3>Ref</h3><span class="med-number" style="color:#aaa">1 AP</span></div>
-                                        <div class="stat-box" style="border-color: var(--druid-orange);"><h3>1 Str</h3><span class="med-number" style="color:var(--druid-orange)">-</span></div>
-                                        <div class="stat-box" style="border-color: #fff;"><h3>1 Crit</h3><span class="med-number" style="color:#fff">-</span></div>
-                                        <div class="stat-box" style="border-color: var(--nature-green);"><h3>1 Haste</h3><span class="med-number" style="color:var(--nature-green)">-</span></div>
                                     </div>
                                 </div>
 
@@ -434,9 +417,9 @@
                                                     <th>Ability</th>
                                                     <th>Result</th>
                                                     <th>Dmg</th>
-                                                    <th style="color:#ffeb3b">E</th>
-                                                    <th style="color:#ff9800">CP</th>
-                                                    <th style="color:#81d4fa">Mana</th>
+                                                    <th class="col-energy">E</th>
+                                                    <th class="col-cp">CP</th>
+                                                    <th class="col-mana">Mana</th>
                                                     <th>Info</th>
                                                 </tr>
                                             </thead>
