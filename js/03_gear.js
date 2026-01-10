@@ -1,10 +1,10 @@
 /**
  * Feral Simulation - File 3: Gear Planner Logic & Database
  * Updated for Turtle WoW 1.18 (Feral Cat)
- * Strict adherence to provided formulas and constants.
+ * Implements new Buffs/Consumables logic with OR conditions.
  */
 
-var ITEM_ID_MAP = {}; // Performance cache for lookups
+var ITEM_ID_MAP = {}; 
 
 // ============================================================================
 // GEAR PLANNER LOGIC
@@ -14,56 +14,37 @@ async function loadDatabase() {
     showProgress("Loading Database...");
     try {
         updateProgress(20);
-
-        // Load Items and Enchants
         const [rItems, rEnchants] = await Promise.all([
             fetch('data/items.json'),
             fetch('data/enchants.json')
         ]);
-
         if (!rItems.ok) throw new Error("Items DB Error " + rItems.status);
         if (!rEnchants.ok) throw new Error("Enchants DB Error " + rEnchants.status);
-
         const items = await rItems.json();
         const enchants = await rEnchants.json();
         updateProgress(60);
 
         ITEM_DB = items.filter(i => {
-            // FIX: Some JSONs use 'level', some 'itemLevel'
             i.itemLevel = i.level || i.itemLevel || 0;
-            // Filter Junk
             if ((i.quality || 0) < 2) return false;
             if (i.itemLevel < 35 && i.slot !== "Relic" && i.slot !== "Idol" && i.slot !== "Trinket") return false;
-
-            // ARMOR FILTER: Cloth(1), Leather(2) only.
             if (i.armorType && i.armorType > 2) return false;
-            
-            // WEAPON FILTER: Exclude Shields
             if (i.slot === "Shield") return false;
-
-            // STAT FILTER
             var interesting = false;
-            // Known IDs (Wolfshead, MCP, etc)
             if (i.id === 8345 || i.id === 9449 || i.id === 23207) interesting = true;
-            
-            // Stats check
             if (i.agility > 0 || i.strength > 0) interesting = true;
             if (i.effects) {
                 if (i.effects.attackPower > 0 || i.effects.feralAttackPower > 0 || i.effects.crit > 0 || i.effects.hit > 0) interesting = true;
-                // Custom Text Check for "Cat", "Feral", "Attack Power", "Feral Combat"
                 if (i.effects.custom && Array.isArray(i.effects.custom)) {
                     var customStr = i.effects.custom.join(" ");
                     if (customStr.includes("Attack Power") || customStr.includes("Cat") || customStr.includes("Feral")) interesting = true;
                 }
             }
-            
             return interesting;
         });
 
-        // Build Map for O(1) lookup
         ITEM_ID_MAP = {};
         ITEM_DB.forEach(i => { ITEM_ID_MAP[i.id] = i; });
-
         ENCHANT_DB = enchants;
 
         initGearPlannerUI();
@@ -80,7 +61,6 @@ async function loadDatabase() {
     } finally { hideProgress(); }
 }
 
-
 function initGearPlannerUI() {
     if (!document.getElementById('charLeftCol')) return;
     renderSlotColumn("left", "charLeftCol");
@@ -88,7 +68,6 @@ function initGearPlannerUI() {
     renderSlotColumn("bottom", "charBottomRow");
     calculateGearStats();
 }
-
 
 function getIconUrl(iconName) {
     if (!iconName) return "https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg";
@@ -100,18 +79,15 @@ function renderSlotColumn(pos, containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = "";
-
     SLOT_LAYOUT[pos].forEach(function (slotName) {
         var itemId = GEAR_SELECTION[slotName];
         if (itemId && typeof itemId === 'object' && itemId.id) itemId = itemId.id;
-
         var item = itemId ? ITEM_ID_MAP[itemId] : null;
         var enchantId = ENCHANT_SELECTION[slotName];
         var enchant = enchantId ? ENCHANT_DB.find(e => e.id == enchantId) : null;
-
+        
         var div = document.createElement("div");
         div.className = "char-slot";
-
         div.onmouseenter = function (e) { showTooltip(e, item); };
         div.onmousemove = function (e) { moveTooltip(e); };
         div.onmouseleave = function () { hideTooltip(); };
@@ -128,15 +104,11 @@ function renderSlotColumn(pos, containerId) {
             displayName = item.name;
             var s = calculateItemScore(item, slotName);
             statText = "EP: " + s.toFixed(1) + " | iLvl: " + item.itemLevel;
-
-            if (item.url) {
-                linkHtml = '<a href="' + item.url + '" target="_blank" class="slot-link-btn" title="Open in Database" onclick="event.stopPropagation()">🔗</a>';
-            }
+            if (item.url) linkHtml = '<a href="' + item.url + '" target="_blank" class="slot-link-btn" title="Open in Database" onclick="event.stopPropagation()">🔗</a>';
         }
 
         var canEnchant = true;
         if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off")) canEnchant = false;
-
         var enchantHtml = "";
         if (canEnchant) {
             var enchName = enchant ? enchant.name : "+ Enchant";
@@ -162,28 +134,24 @@ function getItemColor(q) {
     return colors[q] || "#9d9d9d";
 }
 
-// Tooltips
+// Tooltips & Modals (Standard)
 function showTooltip(e, item) {
     if (!item) return;
     var tt = document.getElementById("wowTooltip");
     if (!tt) return;
     tt.style.display = "block";
-
     var qualityColor = getItemColor(item.quality);
     var iconUrl = getIconUrl(item.icon);
-
     var html = '<div class="tt-header"><div class="tt-icon-small" style="background-image:url(\'' + iconUrl + '\')"></div><div style="flex:1"><div class="tt-name" style="color:' + qualityColor + '">' + item.name + '</div></div></div>';
     if (item.itemLevel) html += '<div class="tt-white">Item Level ' + item.itemLevel + '</div>';
     if (item.slot) html += '<div class="tt-white">' + item.slot + '</div>';
     if (item.armor) html += '<div class="tt-white">' + item.armor + ' Armor</div>';
     html += '<div class="tt-spacer"></div>';
     
-    // Primary Stats
     if (item.stamina) html += '<div class="tt-white">+' + item.stamina + ' Stamina</div>';
     if (item.strength) html += '<div class="tt-white">+' + item.strength + ' Strength</div>';
     if (item.agility) html += '<div class="tt-white">+' + item.agility + ' Agility</div>';
     if (item.intellect) html += '<div class="tt-white">+' + item.intellect + ' Intellect</div>';
-    
     html += '<div class="tt-spacer"></div>';
 
     if (item.effects) {
@@ -192,19 +160,11 @@ function showTooltip(e, item) {
         if (eff.crit) html += '<div class="tt-green">Equip: Improves your chance to get a critical strike by ' + eff.crit + '%.</div>';
         if (eff.attackPower) html += '<div class="tt-green">Equip: + ' + eff.attackPower + ' Attack Power.</div>';
         if (eff.feralAttackPower) html += '<div class="tt-green">Equip: + ' + eff.feralAttackPower + ' Attack Power in Cat, Bear, and Dire Bear forms only.</div>';
-        
-        // Haste logic (MCP)
         if (item.id === 9449) html += '<div class="tt-green">Use: Increases attack speed by 50% for 30 sec. (3 Charges)</div>';
-
-        // Custom Text Lines (Turtle WoW)
         if (eff.custom && Array.isArray(eff.custom)) {
-            eff.custom.forEach(function (line) {
-                html += '<div class="tt-green">' + line + '</div>';
-            });
+            eff.custom.forEach(function (line) { html += '<div class="tt-green">' + line + '</div>'; });
         }
     }
-
-    // SET INFORMATION LOGIC
     if (item.setName) {
         html += '<div class="tt-spacer"></div>';
         var siblings = ITEM_DB.filter(function (i) { return i.setName === item.setName; });
@@ -219,13 +179,10 @@ function showTooltip(e, item) {
         html += '<div class="tt-gold">' + item.setName + ' (' + equippedCount + '/' + siblings.length + ')</div>';
         siblings.forEach(function (sItem) {
             var isEquipped = false;
-            for (var slot in GEAR_SELECTION) {
-                if (GEAR_SELECTION[slot] == sItem.id) isEquipped = true;
-            }
+            for (var slot in GEAR_SELECTION) { if (GEAR_SELECTION[slot] == sItem.id) isEquipped = true; }
             var color = isEquipped ? '#ffff99' : '#888';
             html += '<div style="color:' + color + '; margin-left:10px;">' + sItem.name + '</div>';
         });
-
         html += '<div class="tt-spacer"></div>';
         if (item.setBonuses) {
             var keys = Object.keys(item.setBonuses).sort(function (a, b) { return a - b });
@@ -237,7 +194,6 @@ function showTooltip(e, item) {
             });
         }
     }
-
     tt.innerHTML = html;
     moveTooltip(e);
 }
@@ -246,24 +202,19 @@ function showEnchantTooltip(e, enchantId) {
     if (!enchantId || enchantId === 0) return;
     var ench = ENCHANT_DB.find(x => x.id == enchantId);
     if (!ench) return;
-
     var tt = document.getElementById("wowTooltip");
     if (!tt) return;
     tt.style.display = "block";
-
     var html = '<div class="tt-header"><div style="flex:1"><div class="tt-name" style="color:#1eff00">' + ench.name + '</div></div></div>';
     html += '<div class="tt-white">Enchant</div>';
     html += '<div class="tt-spacer"></div>';
-
-    if (ench.text) {
-        html += '<div class="tt-green">' + ench.text + '</div>';
-    } else if (ench.effects) {
+    if (ench.text) { html += '<div class="tt-green">' + ench.text + '</div>'; } 
+    else if (ench.effects) {
         var ef = ench.effects;
         if (ef.agility) html += '<div class="tt-green">+' + ef.agility + ' Agility</div>';
         if (ef.strength) html += '<div class="tt-green">+' + ef.strength + ' Strength</div>';
         if (ef.attackPower) html += '<div class="tt-green">+' + ef.attackPower + ' Attack Power</div>';
     }
-
     tt.innerHTML = html;
     moveTooltip(e);
 }
@@ -321,20 +272,16 @@ function renderItemList(filterText) {
         if (CURRENT_SELECTING_SLOT === "Finger 2" && GEAR_SELECTION["Finger 1"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id) return false;
-        if (CURRENT_SELECTING_SLOT === "Main Hand") {
-             return i.slot === "Mainhand" || i.slot === "Onehand" || i.slot === "Twohand";
-        }
+        if (CURRENT_SELECTING_SLOT === "Main Hand") return i.slot === "Mainhand" || i.slot === "Onehand" || i.slot === "Twohand";
         return i.slot === slotKey;
     });
 
     relevantItems.forEach(function (i) { i.simScore = calculateItemScore(i, CURRENT_SELECTING_SLOT); });
     relevantItems.sort(function (a, b) { return b.simScore - a.simScore; });
-
     if (filterText) {
         var ft = filterText.toLowerCase();
         relevantItems = relevantItems.filter(function (i) { return i.name.toLowerCase().includes(ft); });
     }
-
     relevantItems.slice(0, 100).forEach(function (item) {
         var iconUrl = getIconUrl(item.icon);
         var row = document.createElement("div");
@@ -343,17 +290,14 @@ function renderItemList(filterText) {
         row.onmouseenter = function (e) { showTooltip(e, item); };
         row.onmousemove = function (e) { moveTooltip(e); };
         row.onmouseleave = function () { hideTooltip(); };
-
         var html = '<div class="item-row-icon"><img src="' + iconUrl + '" style="width:100%; height:100%; border-radius:3px;"></div>' +
             '<div class="item-row-details"><div class="item-row-name" style="color: ' + getItemColor(item.quality) + '">' + item.name + '</div><div class="item-row-sub">iLvl: ' + item.itemLevel + '</div></div>' +
             '<div class="item-score-badge"><span class="score-label">EP</span>' + item.simScore.toFixed(1) + '</div>';
-
         row.innerHTML = html;
         list.appendChild(row);
     });
 }
 function filterItemList() { var txt = document.getElementById("itemSearchInput").value; renderItemList(txt); }
-
 function selectItem(itemId) {
     if (CURRENT_SELECTING_SLOT) {
         GEAR_SELECTION[CURRENT_SELECTING_SLOT] = itemId;
@@ -381,29 +325,21 @@ function openEnchantSelector(slotName) {
     }
 }
 function closeEnchantModal() { var modal = document.getElementById("enchantSelectorModal"); if (modal) modal.classList.add("hidden"); CURRENT_SELECTING_SLOT = null; }
-
 function renderEnchantList() {
     var list = document.getElementById("modalEnchantList");
     if (!list) return;
     list.innerHTML = "";
-
     var unequipDiv = document.createElement("div");
     unequipDiv.className = "item-row";
     unequipDiv.onclick = function () { selectEnchant(0); };
     unequipDiv.innerHTML = '<div class="item-row-details"><div class="item-row-name" style="color:#888;">- No Enchant -</div></div>';
     list.appendChild(unequipDiv);
-
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
     if (slotKey === "Main Hand") slotKey = "Two Hand"; 
-
-    var relevantEnchants = ENCHANT_DB.filter(function (e) {
-        return e.slot === slotKey || e.slot === CURRENT_SELECTING_SLOT;
-    });
-
+    var relevantEnchants = ENCHANT_DB.filter(function (e) { return e.slot === slotKey || e.slot === CURRENT_SELECTING_SLOT; });
     relevantEnchants.forEach(function (e) { e.simScore = calculateEnchantScore(e); });
     relevantEnchants.sort(function (a, b) { return b.simScore - a.simScore; });
-
     relevantEnchants.forEach(function (ench) {
         var row = document.createElement("div");
         row.className = "item-row";
@@ -411,25 +347,19 @@ function renderEnchantList() {
         row.onmouseenter = function (e) { showEnchantTooltip(e, ench.id); };
         row.onmousemove = function (e) { moveTooltip(e); };
         row.onmouseleave = function () { hideTooltip(); };
-
         var desc = ench.text || "";
         var html = '<div class="item-row-details"><div class="item-row-name" style="color: #1eff00;">' + ench.name + '</div><div class="item-row-sub">' + desc + '</div></div>' +
             '<div class="item-score-badge"><span class="score-label">EP</span>' + ench.simScore.toFixed(1) + '</div>';
-
         row.innerHTML = html;
         list.appendChild(row);
     });
 }
-
 function selectEnchant(enchId) {
-    if (CURRENT_SELECTING_SLOT) {
-        ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = enchId;
-    }
+    if (CURRENT_SELECTING_SLOT) ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = enchId;
     closeEnchantModal();
     initGearPlannerUI();
     saveCurrentState(); 
 }
-
 function resetGear() { GEAR_SELECTION = {}; ENCHANT_SELECTION = {}; initGearPlannerUI(); }
 function recalcItemScores() {
     if (!document.getElementById("itemSelectorModal").classList.contains("hidden")) {
@@ -438,95 +368,67 @@ function recalcItemScores() {
     initGearPlannerUI(); 
 }
 
-// ----------------------------------------------------------------------------
-// SCORING (Equivalence Points - EP)
-// ----------------------------------------------------------------------------
+// SCORING
 function calculateItemScore(item, slotNameOverride) {
     if (!item) return 0;
-    
-    // Defaults (Approximate Feral Weights)
     var wAP = parseFloat(getVal("weight_ap") || 1.0);
     var wStr = parseFloat(getVal("weight_str") || 2.4); 
     var wAgi = parseFloat(getVal("weight_agi") || 2.5); 
     var wCrit = parseFloat(getVal("weight_crit") || 22.0); 
     var wHit = parseFloat(getVal("weight_hit") || 18.0);
-    
     var score = 0;
     var e = item.effects || {};
-
-    // 1. BASE STATS
     score += (item.strength || 0) * wStr;
     score += (item.agility || 0) * wAgi;
     score += (e.attackPower || 0) * wAP;
     score += (e.feralAttackPower || 0) * wAP;
-
     score += (e.crit || 0) * wCrit;
     score += (e.hit || 0) * wHit;
-
-    // CUSTOM TEXT PARSING (Turtle WoW)
     if (e.custom && Array.isArray(e.custom)) {
         e.custom.forEach(function(line) {
-            // "Equip: +322 Attack Power in Cat..."
             var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
             if (matchAP) {
-                if (line.includes("Cat") || line.includes("forms") || !line.includes("form")) {
-                     score += parseInt(matchAP[1]) * wAP;
-                }
+                if (line.includes("Cat") || line.includes("forms") || !line.includes("form")) score += parseInt(matchAP[1]) * wAP;
             }
         });
     }
-
-    // Special Items
-    if (item.id === 8345) score += 300; // Wolfshead Helm
-    if (item.id === 9449) score += 500; // MCP
-    if (item.id === 23207) score += 50; // Badge of the Swarmguard
-
+    if (item.id === 8345) score += 300; 
+    if (item.id === 9449) score += 500; 
+    if (item.id === 23207) score += 50; 
     return score;
 }
 
 function calculateEnchantScore(ench) {
     if (!ench) return 0;
-    var wAP = 1.0;
-    var wStr = 2.4;
-    var wAgi = 2.5;
-    
+    var wAP = 1.0; var wStr = 2.4; var wAgi = 2.5;
     var score = 0;
     var stats = ench.effects || {};
-    
     score += (stats.strength || 0) * wStr;
     score += (stats.agility || 0) * wAgi;
     score += (stats.attackPower || 0) * wAP;
-
     return score;
 }
 
 // ----------------------------------------------------------------------------
-// STAT CALCULATION ENGINE
+// STAT CALCULATION ENGINE (Updated for 1.18 Buffs)
 // ----------------------------------------------------------------------------
 function calculateGearStats() {
     var raceSel = document.getElementById("char_race");
     var raceName = raceSel ? raceSel.value : "Tauren";
-    
-    // Use the exact stats provided in prompts via globals.js
     var baseStats = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
-    // Initialize with Base Stats
-    // Formula Requirements:
-    // AP = BaseAP + AGI + 2*STR + EquipAP + BuffAP
-    // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
     var cs = {
         str: baseStats.str,
         agi: baseStats.agi,
-        int: baseStats.int, // For HotW scaling
-        
-        ap: baseStats.ap,   // Initial Base AP
-        crit: baseStats.crit,// Initial Base Crit
-        
+        int: baseStats.int, 
+        ap: baseStats.ap,   
+        crit: baseStats.crit,
         hit: 0,
         haste: 0,
-        wepSkill: 300, // CONSTANT as per prompt
+        wepSkill: 300, 
         wepDmgMin: baseStats.minDmg,
-        wepDmgMax: baseStats.maxDmg
+        wepDmgMax: baseStats.maxDmg,
+        apMod: 1.0 // For Percentage Mods
     };
 
     var setCounts = {};
@@ -538,42 +440,29 @@ function calculateGearStats() {
     for (var slot in GEAR_SELECTION) {
         var id = GEAR_SELECTION[slot];
         if (id && typeof id === 'object' && id.id) id = id.id;
-
         if (id && id !== 0) {
             var item = ITEM_ID_MAP[id];
             if (item) {
                 var e = item.effects || {};
-                
                 cs.str += (item.strength || 0);
                 cs.agi += (item.agility || 0);
                 cs.int += (item.intellect || 0);
-                
                 cs.ap += (e.attackPower || 0);
                 cs.ap += (e.feralAttackPower || 0);
-
                 cs.crit += (e.crit || 0);
                 cs.hit += (e.hit || 0);
-                
-                // CUSTOM TEXT PARSING (Turtle WoW Custom Feral Items)
                 if (e.custom && Array.isArray(e.custom)) {
                     e.custom.forEach(function(line) {
-                        // Regex for "+X Attack Power in Cat"
                         var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
                         if (matchAP) {
-                            if (line.includes("Cat") || line.includes("forms")) {
-                                cs.ap += parseInt(matchAP[1]);
-                            }
+                            if (line.includes("Cat") || line.includes("forms")) cs.ap += parseInt(matchAP[1]);
                         }
                     });
                 }
-
-                // Track Sets
                 if (item.setName) {
                     if (!setCounts[item.setName]) setCounts[item.setName] = 0;
                     setCounts[item.setName]++;
                 }
-
-                // Special Flags
                 if (item.id === 8345) hasWolfshead = true;
                 if (item.id === 9449) hasMCP = true;
             }
@@ -596,95 +485,125 @@ function calculateGearStats() {
         }
     }
 
-    // 4. BUFFS & CONSUMABLES
-    if (getVal("buff_motw")) { cs.str += 12; cs.agi += 12; cs.int += 12; }
-    if (getVal("buff_mongoose")) { cs.agi += 25; cs.crit += 2; }
-    if (getVal("buff_juju_power")) { cs.str += 30; }
-    if (getVal("buff_juju_might")) { cs.ap += 40; }
-    if (getVal("buff_winterfall")) { cs.str += 35; } 
-    if (getVal("buff_food_str")) { cs.str += 20; }
-    if (getVal("buff_food_agi")) { cs.agi += 20; }
-    if (getVal("buff_onyxia")) { cs.crit += 5; cs.ap += 140; }
-    if (getVal("buff_songflower")) { cs.str += 15; cs.agi += 15; cs.crit += 5; }
-    if (getVal("buff_warchief")) { cs.haste += 15; } 
+    // 4. BUFFS & CONSUMABLES (New Logic)
     
-    if (getVal("buff_might")) { cs.ap += 222; }
-    if (getVal("buff_battle_shout")) { cs.ap += 290; }
-    if (getVal("buff_trueshot")) { cs.ap += 100; }
-    
-    // 5. ATTRIBUTE MULTIPLIERS
-    var statMod = 1.0;
-    if (getVal("buff_bok")) statMod *= 1.1;
-    if (getVal("buff_zandalar")) statMod *= 1.15;
-    
-    // Heart of the Wild (5/5) (Constant) -> 20% Str/Int
-    var hotwMod = 1.20; 
+    // Select: Mark of the Wild
+    var valMotW = getVal("buff_motw");
+    if (valMotW === "reg") { cs.str += 12; cs.agi += 12; cs.int += 12; }
+    else if (valMotW === "imp") { cs.str += 16; cs.agi += 16; cs.int += 16; }
 
-    // Apply Multipliers
-    cs.str = Math.floor(cs.str * statMod * hotwMod);
-    cs.int = Math.floor(cs.int * statMod * hotwMod);
-    cs.agi = Math.floor(cs.agi * statMod); // No HotW for Agi
+    // Checkbox: Blessing of Kings (10%)
+    var modStats = 1.0;
+    if (getVal("buff_kings")) modStats *= 1.10;
+
+    // Checkbox: Leader of the Pack (3% Crit)
+    if (getVal("buff_lotp")) cs.crit += 3;
+
+    // Select: Blessing of Might
+    var valMight = getVal("buff_might");
+    if (valMight === "reg") cs.ap += 185;
+    else if (valMight === "imp") cs.ap += 240;
+
+    // Select: Battle Shout
+    var valBS = getVal("buff_bs");
+    if (valBS === "reg") cs.ap += 232;
+    else if (valBS === "imp") cs.ap += 290;
+
+    // Totems
+    if (getVal("buff_goa_totem")) cs.agi += 77;
+    if (getVal("buff_soe_totem")) cs.str += 77;
+    // Windfury Totem handled in Engine (Proc)
+
+    // Select: Trueshot Aura
+    var valTSA = getVal("buff_tsa");
+    if (valTSA === "reg") cs.ap += 55; // Rank 2
+    else if (valTSA === "mod") cs.apMod *= 1.05; // Rank 1 (Percent)
+
+    // Consumables: Elixir (Mongoose)
+    if (getVal("consum_mongoose")) { cs.agi += 25; cs.crit += 1; } // Prompt: 1% Crit
+
+    // Consumables: Weapon Buff (Select)
+    var valWep = getVal("consum_wep");
+    if (valWep === "elemental") { cs.crit += 2; }
+    else if (valWep === "consecrated") {
+        // 100 AP vs Undead
+        var eType = getVal("enemy_type");
+        if (eType === "undead") cs.ap += 100;
+    }
+
+    // Consumables: Blasted Lands (Select)
+    var valBlast = getVal("consum_blasted");
+    if (valBlast === "scorpok") cs.agi += 25;
+    else if (valBlast === "roids") cs.str += 25;
+
+    // Consumables: Jujus / Firewater (Select + Checkbox)
+    if (getVal("consum_juju_power")) cs.str += 30; // Juju Power stacks
+    var valJuju = getVal("consum_juju");
+    if (valJuju === "firewater") cs.ap += 35;
+    else if (valJuju === "might") cs.ap += 40;
+
+    // Consumables: Food (Select)
+    var valFood = getVal("consum_food");
+    if (valFood === "str") cs.str += 20;
+    else if (valFood === "agi") cs.agi += 10;
+    else if (valFood === "haste") cs.haste += 2;
+
+    // Potion: Quickness (Active CD handled in Engine, no static stats here)
+
+    // 5. ATTRIBUTE MULTIPLIERS (Kings + HotW)
+    var hotwMod = 1.20; // 5/5
     
-    // 6. DERIVED STATS (Scaling)
+    cs.str = Math.floor(cs.str * modStats * hotwMod);
+    cs.int = Math.floor(cs.int * modStats * hotwMod);
+    cs.agi = Math.floor(cs.agi * modStats); // No HotW for Agi
+    
+    // 6. DERIVED STATS
     // AP = BaseAP + AGI + 2*STR + EquipAP + BuffAP
-    // (cs.ap currently holds BaseAP + EquipAP + BuffAP)
     cs.ap += (cs.str * 2) + (cs.agi * 1);
     
-    // Predatory Strikes (3/3) (Constant) -> 10% AP
-    // "Increase attack power by 10%"
-    cs.ap = Math.floor(cs.ap * 1.10);
+    // Predatory Strikes (3/3): +10% AP? 
+    // Wait, Predatory strikes scaling is usually Multiplicative.
+    // "Increase attack power by 10%".
+    cs.apMod *= 1.10;
+    
+    // Apply AP Multipliers (Predatory + TSA%)
+    cs.ap = Math.floor(cs.ap * cs.apMod);
 
     // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
-    // (cs.crit currently holds BaseCrit + EquipCrit + BuffCrit)
     var critFromAgi = cs.agi * 0.05;
     cs.crit += critFromAgi;
     
-    // Constant Talents/Auras
-    // Leader of the Pack (1/2) -> +3% Crit
-    // Sharpened Claws (3/3) -> +6% Crit
-    cs.crit += 3.0; // LotP
-    cs.crit += 6.0; // Sharpened Claws
+    // Sharpened Claws (3/3)
+    cs.crit += 6.0; 
     
-    // Natural Weapons (3/3) -> +3% Hit (Damage handled in Engine)
+    // Natural Weapons (3/3) -> +3% Hit
     cs.hit += 3.0;
 
-    // 7. SET BONUSES & UI FLAGS
+    // 7. SET BONUSES
     if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
 
     var elWolf = document.getElementById("meta_wolfshead"); if (elWolf) elWolf.checked = hasWolfshead;
     var elMCP = document.getElementById("item_mcp"); if (elMCP) elMCP.checked = hasMCP;
     var elT05 = document.getElementById("set_t05_4p"); if (elT05) elT05.checked = hasT05_4p;
 
-    // 8. UPDATE OUTPUT FIELDS
+    // 8. UPDATE UI
     var isManual = document.getElementById("manual_stats") ? document.getElementById("manual_stats").checked : false;
-
     var updateInput = function (id, val, isPct) {
         var el = document.getElementById(id);
         if (!el) return;
-        if (isManual) {
-            el.disabled = false;
-        } else {
-            el.disabled = true;
-            el.value = isPct ? val.toFixed(2) : Math.floor(val);
-        }
+        if (isManual) { el.disabled = false; } else { el.disabled = true; el.value = isPct ? val.toFixed(2) : Math.floor(val); }
     };
-
     updateInput("stat_str", cs.str, false);
     updateInput("stat_agi", cs.agi, false);
     updateInput("stat_ap", cs.ap, false);
     updateInput("stat_crit", cs.crit, true);
     updateInput("stat_hit", cs.hit, false);
     updateInput("stat_haste", cs.haste, false);
-    
-    // Weapon Skill (Constant 300)
     updateInput("stat_wep_skill", cs.wepSkill, false); 
+    updateInput("stat_wep_dmg_min", cs.wepDmgMin, false);
+    updateInput("stat_wep_dmg_max", cs.wepDmgMax, false);
     
-    // Update Preview Box
     var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(cs.ap);
     var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = cs.crit.toFixed(2) + "%";
     var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = cs.hit.toFixed(2) + "%";
-    
-    // Update Hidden Min/Max Dmg for Engine
-    updateInput("stat_wep_dmg_min", cs.wepDmgMin, false);
-    updateInput("stat_wep_dmg_max", cs.wepDmgMax, false);
 }

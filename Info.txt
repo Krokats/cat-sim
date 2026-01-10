@@ -1,4 +1,3 @@
-Feral Scaling
 ** Base Stats (lv60) Tauren-Cat / Night Elf-Cat:**
 Strength: 70 / 62
 Agility: 55 / 65
@@ -32,7 +31,7 @@ Reshift: Shifts out and into Cat-Form (Removes "Tiger's Fury" Buff)
 Tiger's Fury: Increase damage done by 50 (adds to NormalDmg) and regenerates 10 Energy every 3 sec. for 6 sec
 Fearie Fire: Decreae Armor of target by 505 for 40 sec.
 
-** Talents ** (Talente mit "#" sind Talente, welche Optional sind. Diese sollten Als Optionen in den Talenten erscheinen)
+** Talents ** (Talente mit "#" sind Talente, welche Optional sind. Diese sollten Als Optionen in den Talenten erscheinen. Alle anderen gelten als Konstant und müssen nicht explizit ausgewählt werden.)
 Ferocity (#/5): Reduces Energy Cost of Claw and Rake by # Energy (max. 5) 
 Feral Aggresion (#/5): Increase the Damage of Ferocious Bite by 3%*# (max 15%) 
 Open Wounds (3/3): Increase Damage of Rip by 15%*. Increase Damage of Claw by 30% for each active Bleed effect on the target.
@@ -65,7 +64,7 @@ end if
 if (Target_has_no_debuff:"Fearie Fire" and FF_active) then cast "Fearie Fire" //Option "FF_actice": Activate/Deactivate Fearie Fire
 
 
-** Boss Armor **
+** Boss Armor ** (Boss soll in Enemy-Card über Dropdown auswählbar sein)
 Raid	Boss	Boss Armor
 World   Apprentice Training Dummy   100
 World   Expert Training Dummy   3000
@@ -111,7 +110,7 @@ Strat UD	Atiesh	3850
 UBRS	Gyth	4061
 UBRS	Lord Valthalak	3400
 
-** Optional Boss-Debuffs for Armor Reduction **
+** Optional Boss-Debuffs for Armor Reduction ** (In Enemy-Card)
 - Sunder Armor x5 (Rank 5): -2250 or Improved Exposed Armor: -2550
 - Spirit of Eskhandar: -1200
 - Fearie Fire (Rank 4): -505
@@ -140,8 +139,10 @@ UBRS	Lord Valthalak	3400
 - Improved Battle Shout (+25%): +290 AP
 
 ** Gear / Set-Boni (depends on Equipment) **
+
+(Wolfshead Helm and Manual Crowd Pummeler are not relevant anymore. Wolfshead Helm is now an Enchant for Head and Crowd Pummeler Effect was reduced.)
+
 Cenarion Harness T1: 
-T1/3p: Reduce cooldown of Faerie Fire by 2 seconds
 T1/5p: Reduce the energy cost of Tiger's Fury by 5
 T1/8p: Ferocious Bite has a 20% chance per combo point to increase attack speed by 15% for the next 5 attacks
 
@@ -175,50 +176,32 @@ Idol of Laceration: Your finishing moves have a 20% chance per combo point to ca
 - Hand of Justice: "2% chance on melee hit to gain 1 extra attack."
 - Overloaded Heating Coil: "Has a 5% chance on striking the enemy for 50 to 71 Fire damage."
 
-
 ** Combat Log **
-Time, Event, Ability, Result, Damage Normal, Damage Crit, Damage Tick, Remaining Time Rake, Remaining Time Rip, CP, Omen of Clarity (0/1), AP, Haste, Mana, {proccs}, [Remaining Time of On-Use CDs), Info 
+Time, Event, Ability, Result, Damage Normal, Damage Crit, Damage Tick, Special Damage, Remaining Time Rake, Remaining Time Rip, CP, Omen of Clarity (0/1), AP, Haste, Mana, {proccs}, [Remaining Time of On-Use CDs), Info 
 
 
 ** Summary Modifiers **
+Energy Cost Claw = 45 Energy-Talent_Ferocity-[T2.5/3]*3-[IoF]*3
+Energy Cost Rake = 40 Energy-Talent_Ferocity-[T2.5/3]*3-[IoF]*3
+Energy Cost Shred = 60 Energy-(Talent_ImprovedShred*6)-[T2.5/3]*3
+Energy Cost Tiger's Fury = 30 Energy - ([T1/5p]*5)
 
-Energy Cost Claw = 45 Energy-Talent_Ferocity
-Energy Cost Rake = 40 Energy-Talent_Ferocity
-Energy Cost Shred = 60 Energy-(Talent_ImprovedShred*6)
-
-Dmg-Modifier Ferocious Bite = 1+ (Talent_FeralAggresion*3/100 )
+Dmg-Modifiere General = 1 + (Talent_NaturalWeapons/100)
+Dmg-Modifier Ferocious Bite = 1 + (Talent_FeralAggresion*3/100 )
 Dmg-Modifier Rip = 1 + (Talent_OpenWounds*5/100)
-Dmg-Modifier Claw = 1 + (Talent_OpenWounds*Number_BleedEffects*10/100) + (Talent_PredatoryStrikes[7/14/20]/100)
-Dmg-Modifier Shred = 1+ (Talent_ImprovedShred*5/100)
-Dmg-Modifier Rake = 1  + (Talent_PredatoryStrikes[7/14/20]/100)
+Dmg-Modifier Claw = 1 + (Talent_OpenWounds*Number_BleedEffects*10/100) + (Talent_PredatoryStrikes[7/14/20]/100) + ([T2.5/5]*15/100)
+Dmg-Modifier Shred = 1+ (Talent_ImprovedShred*5/100) + ([T2.5/5]*15/100)
+Dmg-Modifier Rake = 1  + (Talent_PredatoryStrikes[7/14/20]/100) + ([T2.5/5]*15/100)
+
+Tick-Time-Modifier Rip =2 sec - [IoS]*0,2s
+Tick-Time-Modifier Rake = 3 sec - [IoS]*0,3s
 
 Time-Modifier Tiger's Fury = 6 + (Talent_BloodFrenzy*6)
-AttackSpeed-Modifier = 1 / (1+(Use_TigerFury/100))
+AttackSpeed-Modifier = 1 / (1+ (Use_TigerFury/100) + ([T1/8p]*15/100))
 
-** Skills and Scaling **
-NormalDmg (White) = BaseDmg + (TotalAP-BaseAP)/14
-Claw: 105%*NormalDmg + 115, +1CP 
-Rake (HIT) - Dmg:  61 + 0,115*(TotalAP), +1CP (40 Energy-TalentFerocity)
-Rake (DoT) - Total Dmg (3 Ticks, 3s, 9s Total): 102 + 0,09*(TotalAP) 
-Rip (Finishing Move), DoT - (30 Energy)
-Rip - Number of Ticks: 4+CP, Alle 2 Sek.  
-Rip - Tick Damage:  47 +(CP-1)*31+Min(4;CP)/100*(AP-BaseAP)
-Ferocious Bite (Finishing Move): Causes Damage per Combo Points and converts each additional point of Energy into 0,5% extra damage, (35 Energy)
-Ferocious Bite Damage: (70+128*CP+0,07*TotalAP)*1,005^(Remaining Energy)
-Shred (Behind): 225%*NormalDmg + 180 (Behind), +1CP (60 Energy)
-Reshift: Shifts out and into Cat-Form (Removes "Tiger's Fury" Buff)
-Tiger's Fury: Increase damage done by 50 (adds to NormalDmg) and regenerates 10 Energy every 3 sec. for 6 sec
-Fearie Fire: Decreae Armor of target by 505 for 40 sec.
 
-** Talents ** (Talente mit "#" sind Talente, welche Optional sind. Diese sollten Als Optionen in den Talenten erscheinen)
+*****
+- Gear Planner: Nur Druid Items, Waffen (wie Moonkin), Idol ausblenden (über config)
+- UI: Gear Planner Auswahl mit Esc oder aus Fenster klicken schließen
+- Char Stats werden nicht richtig berechnet
 
-Predatory Strikes (3/3): Increase attack power by 10%. Increase damage cause by Claw and Rake by 20%.
-Ancient Brutality (2/2): Periodic ticks of Bleed effects restore 5 Energy.
-Berserk (1/1): Increase energy regeneration rate by 100% for 20 seconds. CD: 6 min. 
-Heart of the Wild (5/5): Increase Int and Strength by 20%.
-Carnage (2/2): Ferocious Bite has a 20% chance per combo point spent to refresh your active Rake and Rip effects and to add an additional combo point.
-Leader of the Pack (1/2): Increase cirtical chance by 3%.
-Furor (5/5): Gain 40 Energy when shapesifting into Cat Form.
-Natural Weapons (3/3): Increase damage by 10%. Increase chance to hit by 3%.
-Natural Shapeshifter (#/3): Reduce Mana cost of all shapeshifting by 10%*#.
-Omen of Clarity (1/1): 10% chance an attack (also normal white attacks) will enter a Clearcasting state. In Clearcasting state, the the cost of the next ability will be reduced by 100%.

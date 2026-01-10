@@ -51,7 +51,6 @@ function addSim(isInit) {
     var newSim = new SimObject(id, "Simulation " + (SIM_LIST.length + 1));
     
     // Default Config will be grabbed from current UI state via getSimInputs()
-    // This ensures defaults match the UI
     newSim.config = typeof getSimInputs === "function" ? getSimInputs() : {}; 
     newSim.gear = {}; 
     newSim.enchants = {};
@@ -147,8 +146,7 @@ function updateSimName() {
 function saveSimData(idx) {
     var s = SIM_LIST[idx];
     if(!s) return;
-    // We need to define getSimInputs in engine or here. 
-    // Usually it is in engine.js, but since UI needs to save, we assume it's globally available.
+    
     if(typeof getSimInputs === 'function') {
         s.config = getSimInputs();
     }
@@ -201,10 +199,9 @@ function renderComparisonTable() {
         
         var tr = document.createElement("tr");
         
-        var dpsMin = "-", dpsAvg = "-", dpsMax = "-";
+        var dpsAvg = "-";
         if (r) {
             dpsAvg = Math.floor(r.dps);
-            // Min/Max placeholder
         }
 
         // Build Row
@@ -219,9 +216,9 @@ function renderComparisonTable() {
             <td>${c.enemy_level || 63}</td>
             <td style="font-size:0.8rem;">${getRotationShort(c)}</td>
             <td style="font-size:0.8rem;">${getGearShort(sim)}</td>
-            <td style="text-align:right; color:#90caf9;">${dpsMin}</td>
+            <td style="text-align:right; color:#90caf9;">-</td>
             <td style="text-align:right; color:#ffb74d; font-weight:bold;">${dpsAvg}</td>
-            <td style="text-align:right; color:#a5d6a7;">${dpsMax}</td>
+            <td style="text-align:right; color:#a5d6a7;">-</td>
             <td style="text-align:center; cursor:pointer; color:#f44336;" onclick="deleteSim(${idx})">✖</td>
         `;
         tr.innerHTML = html;
@@ -275,8 +272,6 @@ function runAllSims() {
 
             var all = [];
             var iterations = sim.config.iterations || 100;
-            // Quick run for mass comparison, maybe limit if count is huge? 
-            // We stick to config.
             
             for(var i=0; i < iterations; i++) {
                 all.push(runCoreSimulation(sim.config));
@@ -322,13 +317,31 @@ function setupUIListeners() {
 
 function updateEnemyInfo() {
     var armor = getVal('enemy_armor');
-    
+    var debuff = 0;
+
+    // Major Armor (Sunder vs IEA)
+    var maj = getVal("debuff_major_armor");
+    if (maj === "sunder") debuff += 2250;
+    else if (maj === "iea") debuff += 2550;
+
+    // Eskhandar
+    if (getVal("debuff_eskhandar")) debuff += 1200;
+
+    // Curse of Recklessness
+    if (getVal("debuff_cor")) debuff += 640;
+
+    // Faerie Fire (Check both Debuff box AND Rotation box, max 1 application)
+    if (getVal("debuff_ff") || getVal("use_ff")) debuff += 505;
+
+    // Calculate effective armor
+    var effArmor = Math.max(0, armor - debuff);
+
     // Turtle WoW 1.18 DR Formula approximation for Lvl 60 attacker
-    // DR = Armor / (Armor + 400 + 85 * (60 + 4.5 * (60 - 59))) = Armor / (Armor + 5882.5)
-    var dr = armor / (armor + 5882.5);
+    // DR = Armor / (Armor + 5882.5)
+    var dr = effArmor / (effArmor + 5882.5);
     var pct = (dr * 100).toFixed(2);
     
-    setText('sumRes', pct + "%");
+    setText('sumRes', pct + "% (Eff: " + effArmor + ")");
 }
 
 function updatePlayerStats() {
@@ -435,7 +448,8 @@ function renderDistBar(r) {
         "Rake": "#f44336", 
         "Claw": "#ff9800",
         "Rake (DoT)": "#e57373",
-        "Rip (DoT)": "#b71c1c"
+        "Rip (DoT)": "#b71c1c",
+        "Extra Attack": "#90caf9" // Windfury
     };
     
     sorted.forEach(s => {

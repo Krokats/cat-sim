@@ -194,32 +194,108 @@
                                                 <span class="toggle-icon">▼</span>
                                             </div>
                                             <div class="card-body">
-                                                <div class="gear-section-title">Class / Raid Buffs</div>
-                                                <div class="checkbox-grid">
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_motw" checked><span class="checkmark"></span> Mark of the Wild</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_leader_pack" checked><span class="checkmark"></span> Leader of the Pack</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_bok" checked><span class="checkmark"></span> Blessing of Kings</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_might" checked><span class="checkmark"></span> Blessing of Might</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_battle_shout" checked><span class="checkmark"></span> Battle Shout</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_trueshot"><span class="checkmark"></span> Trueshot Aura</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_warchief"><span class="checkmark"></span> Warchief's Blessing</label>
+                                                
+                                                <div class="gear-section-title">Consumables (Mutually Exclusive)</div>
+                                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
+                                                    <div class="input-group">
+                                                        <label>Weapon Buff</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="consum_wep">
+                                                                <option value="">None</option>
+                                                                <option value="consecrated">Consecrated Stone (100AP Undead)</option>
+                                                                <option value="elemental" selected>Elemental Stone (2% Crit)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="input-group">
+                                                        <label>Food</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="consum_food">
+                                                                <option value="">None</option>
+                                                                <option value="str" selected>Smoked Dumplings / Mushroom (20 Str)</option>
+                                                                <option value="agi">Sour Mountain Berry (10 Agi)</option>
+                                                                <option value="haste">Tel'abim Medley (2% Haste)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="input-group">
+                                                        <label>Blasted Lands</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="consum_blasted">
+                                                                <option value="">None</option>
+                                                                <option value="scorpok" selected>Scorpok Assay (25 Agi)</option>
+                                                                <option value="roids">R.O.I.D.S (25 Str)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="input-group">
+                                                        <label>Jujus / Firewater</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="consum_juju">
+                                                                <option value="">None</option>
+                                                                <option value="firewater">Winterfall Firewater (35 AP)</option>
+                                                                <option value="might" selected>Juju Might (40 AP)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
-                                                <div class="gear-section-title">World Buffs</div>
                                                 <div class="checkbox-grid">
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_onyxia"><span class="checkmark"></span> Onyxia / Nefarian</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_zandalar"><span class="checkmark"></span> Spirit of Zandalar</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_songflower"><span class="checkmark"></span> Songflower Serenade</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="consum_mongoose" checked><span class="checkmark"></span> Elixir of Mongoose</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="consum_juju_power" checked><span class="checkmark"></span> Juju Power (30 Str)</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="consum_potion_quickness"><span class="checkmark"></span> Potion of Quickness (5% Haste)</label>
                                                 </div>
 
-                                                <div class="gear-section-title">Consumables</div>
+                                                <div class="gear-section-title">Raid Buffs</div>
+                                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
+                                                    <div class="input-group">
+                                                        <label>Mark of the Wild</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="buff_motw">
+                                                                <option value="">None</option>
+                                                                <option value="reg">Regular (+12)</option>
+                                                                <option value="imp" selected>Improved (+16)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="input-group">
+                                                        <label>Blessing of Might</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="buff_might">
+                                                                <option value="">None</option>
+                                                                <option value="reg">Regular (+185 AP)</option>
+                                                                <option value="imp" selected>Improved (+240 AP)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="input-group">
+                                                        <label>Battle Shout</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="buff_bs">
+                                                                <option value="">None</option>
+                                                                <option value="reg">Regular (+232 AP)</option>
+                                                                <option value="imp" selected>Improved (+290 AP)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="input-group">
+                                                        <label>Trueshot Aura</label>
+                                                        <div class="select-wrapper">
+                                                            <select id="buff_tsa">
+                                                                <option value="">None</option>
+                                                                <option value="reg">Regular (+55 AP)</option>
+                                                                <option value="mod" selected>Modified (+5% AP)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 <div class="checkbox-grid">
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_mongoose"><span class="checkmark"></span> Elixir of Mongoose</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_juju_power"><span class="checkmark"></span> Juju Power (Str)</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_juju_might"><span class="checkmark"></span> Juju Might (AP)</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_winterfall"><span class="checkmark"></span> Winterfall Firewater</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_food_str"><span class="checkmark"></span> Food (Str)</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_food_agi"><span class="checkmark"></span> Food (Agi)</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_kings" checked><span class="checkmark"></span> Blessing of Kings</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_lotp" checked><span class="checkmark"></span> Leader of the Pack</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_wf_totem" checked><span class="checkmark"></span> Windfury Totem</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_goa_totem" checked><span class="checkmark"></span> Grace of Air</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_soe_totem" checked><span class="checkmark"></span> Strength of Earth</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -293,22 +369,10 @@
                                             </div>
                                             <div class="card-body">
                                                 <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Only optional talents listed. Others assumed constant (e.g., Open Wounds 3/3).</p>
-                                                <div class="input-group-small">
-                                                    <label>Ferocity (0-5)</label>
-                                                    <input type="number" id="tal_ferocity" value="5" min="0" max="5">
-                                                </div>
-                                                <div class="input-group-small">
-                                                    <label>Feral Aggression (0-5)</label>
-                                                    <input type="number" id="tal_feral_aggression" value="5" min="0" max="5">
-                                                </div>
-                                                <div class="input-group-small">
-                                                    <label>Imp. Shred (0-2)</label>
-                                                    <input type="number" id="tal_imp_shred" value="2" min="0" max="2">
-                                                </div>
-                                                <div class="input-group-small">
-                                                    <label>Nat. Shapeshifter (0-3)</label>
-                                                    <input type="number" id="tal_nat_shapeshifter" value="3" min="0" max="3">
-                                                </div>
+                                                <div class="input-group-small"><label>Ferocity (0-5)</label><input type="number" id="tal_ferocity" value="5" min="0" max="5"></div>
+                                                <div class="input-group-small"><label>Feral Aggression (0-5)</label><input type="number" id="tal_feral_aggression" value="5" min="0" max="5"></div>
+                                                <div class="input-group-small"><label>Imp. Shred (0-2)</label><input type="number" id="tal_imp_shred" value="2" min="0" max="2"></div>
+                                                <div class="input-group-small"><label>Nat. Shapeshifter (0-3)</label><input type="number" id="tal_nat_shapeshifter" value="3" min="0" max="3"></div>
                                                 <input type="hidden" id="tal_berserk" value="1">
                                             </div>
                                         </div>
@@ -320,10 +384,14 @@
                                             <div class="card-body">
                                                 <div class="input-group"><label>Target Level</label>
                                                     <div class="select-wrapper"><select id="enemy_level">
-                                                            <option value="60">Level 60</option>
-                                                            <option value="61">Level 61</option>
-                                                            <option value="62">Level 62</option>
                                                             <option value="63" selected>Level 63 (Boss)</option>
+                                                            <option value="60">Level 60</option>
+                                                        </select></div>
+                                                </div>
+                                                <div class="input-group"><label>Enemy Type</label>
+                                                    <div class="select-wrapper"><select id="enemy_type">
+                                                            <option value="undead">Undead</option>
+                                                            <option value="humanoid" selected>Humanoid / Other</option>
                                                         </select></div>
                                                 </div>
                                                 <div class="input-group"><label>Armor</label>
@@ -332,6 +400,22 @@
                                                 <div class="toggle-wrapper" style="margin-top:10px;">
                                                     <label class="toggle"><input type="checkbox" id="enemy_can_bleed" checked><span class="slider"></span><span class="label-text">Can Bleed</span></label>
                                                 </div>
+                                                
+                                                <div class="gear-section-title">Debuffs (Armor)</div>
+                                                <div class="input-group">
+                                                    <label>Major Armor Reduct</label>
+                                                    <div class="select-wrapper"><select id="debuff_major_armor">
+                                                            <option value="">None</option>
+                                                            <option value="sunder" selected>Sunder Armor x5 (-2250)</option>
+                                                            <option value="iea">Imp. Exposed Armor (-2550)</option>
+                                                        </select></div>
+                                                </div>
+                                                <div class="checkbox-grid" style="grid-template-columns: 1fr;">
+                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_eskhandar"><span class="checkmark"></span> Spirit of Eskhandar (-1200)</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_ff" checked><span class="checkmark"></span> Faerie Fire (-505)</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_cor" checked><span class="checkmark"></span> Curse of Recklessness (-640)</label>
+                                                </div>
+
                                                 <div class="enemy-info-box">
                                                     <div class="enemy-stat-row"><span>Phys Reduction:</span> <span id="sumRes" class="enemy-stat-val">0%</span></div>
                                                 </div>
@@ -345,40 +429,25 @@
                                             <div class="card-body">
                                                 <div class="input-group" style="margin-bottom:20px;">
                                                     <label>Positioning</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="rota_position">
-                                                            <option value="back">Behind (Shred)</option>
-                                                            <option value="front">Front (Claw)</option>
-                                                        </select>
-                                                    </div>
+                                                    <div class="select-wrapper"><select id="rota_position"><option value="back">Behind (Shred)</option><option value="front">Front (Claw)</option></select></div>
                                                 </div>
-
+                                                
                                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; background:#252525; padding:8px; border-radius:6px;">
                                                     <label class="toggle" style="margin:0;"><input type="checkbox" id="use_rip" checked><span class="slider"></span><span class="label-text" style="color:var(--druid-orange)">Use Rip</span></label>
-                                                    <div style="display:flex; align-items:center; gap:8px;">
-                                                        <label style="font-size:0.85rem; color:#aaa;">Min CP:</label>
-                                                        <input type="number" id="rip_cp" value="5" min="1" max="5" style="width:60px; padding:4px;">
-                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:8px;"><label style="font-size:0.85rem; color:#aaa;">Min CP:</label><input type="number" id="rip_cp" value="5" min="1" max="5" style="width:60px; padding:4px;"></div>
                                                 </div>
 
                                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; background:#252525; padding:8px; border-radius:6px;">
                                                     <label class="toggle" style="margin:0;"><input type="checkbox" id="use_fb" checked><span class="slider"></span><span class="label-text" style="color:var(--druid-orange)">Use Bite</span></label>
-                                                    <div style="display:flex; align-items:center; gap:8px;">
-                                                        <label style="font-size:0.85rem; color:#aaa;">Min Energy:</label>
-                                                        <input type="number" id="fb_energy" value="35" min="35" max="100" style="width:60px; padding:4px;">
-                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:8px;"><label style="font-size:0.85rem; color:#aaa;">Min Energy:</label><input type="number" id="fb_energy" value="35" min="35" max="100" style="width:60px; padding:4px;"></div>
                                                 </div>
 
                                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; background:#252525; padding:8px; border-radius:6px;">
                                                     <label class="toggle" style="margin:0;"><input type="checkbox" id="use_reshift" checked><span class="slider"></span><span class="label-text" style="color:var(--druid-orange)">Powershift</span></label>
-                                                    <div style="display:flex; align-items:center; gap:8px;">
-                                                        <label style="font-size:0.85rem; color:#aaa;">Max Energy:</label>
-                                                        <input type="number" id="reshift_energy" value="10" min="0" max="100" style="width:60px; padding:4px;">
-                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:8px;"><label style="font-size:0.85rem; color:#aaa;">Max Energy:</label><input type="number" id="reshift_energy" value="10" min="0" max="100" style="width:60px; padding:4px;"></div>
                                                 </div>
 
                                                 <div class="separator"></div>
-
                                                 <div class="toggle-grid">
                                                     <label class="toggle"><input type="checkbox" id="use_tf" checked><span class="slider"></span><span class="label-text">Tiger's Fury</span></label>
                                                     <label class="toggle"><input type="checkbox" id="use_rake" checked><span class="slider"></span><span class="label-text">Use Rake</span></label>
@@ -412,7 +481,6 @@
                         <div class="action-area-wrapper" style="display:flex; flex-direction:column; align-items:center; gap:10px; margin: 20px 0;">
                             <div class="button-row" style="display:flex; gap:15px;">
                                 <button id="btnRun" class="primary-btn"><span class="btn-icon">⚡</span> Run Simulation</button>
-                                <button id="btnWeights" class="blue-btn" title="Coming soon"><span class="btn-icon">⚖️</span> Stat Weights</button>
                             </div>
                         </div>
 
@@ -424,12 +492,7 @@
                             <div class="card-body">
                                 <div class="results-header" style="border-bottom:none; margin-bottom:10px;">
                                     <div class="center-toggles">
-                                        <div class="view-toggles">
-                                            <button class="view-btn" onclick="switchView('min')" id="viewMin">Min</button>
-                                            <button class="view-btn active" onclick="switchView('avg')" id="viewAvg">Average</button>
-                                            <button class="view-btn" onclick="switchView('max')" id="viewMax">Max</button>
                                         </div>
-                                    </div>
                                     <div class="right-actions"><button onclick="generateSummaryImage()" class="btn-mini">📸 Save Image</button></div>
                                 </div>
 
@@ -556,5 +619,31 @@
     <script src="js/05_engine.js"></script>
     <script src="js/06_main.js"></script>
 
+    <script>
+        function generateSummaryImage() {
+            var card = document.getElementById("summaryCard");
+            var resDps = document.getElementById("resDps").innerText;
+            var simTime = document.getElementById("simTime").value;
+            var simName = document.getElementById("simName").value;
+            
+            document.getElementById("sumAvg").innerText = resDps;
+            document.getElementById("sumTime").innerText = simTime + "s";
+            document.getElementById("sumSimName").innerText = simName;
+            document.getElementById("sumDate").innerText = new Date().toLocaleDateString();
+
+            card.style.position = "fixed";
+            card.style.top = "0";
+            card.style.zIndex = "9999";
+            
+            html2canvas(card, {backgroundColor: "#121212"}).then(canvas => {
+                var link = document.createElement('a');
+                link.download = 'feral_sim_summary.png';
+                link.href = canvas.toDataURL();
+                link.click();
+                
+                card.style.top = "-2000px";
+            });
+        }
+    </script>
 </body>
 </html>
