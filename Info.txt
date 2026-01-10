@@ -1,0 +1,167 @@
+Feral Scaling
+
+** Base Stats (lv60) Tauren-Cat / Night Elf-Cat:**
+Strength: 70 / 62
+Agility: 55 / 65
+Stamina: 72 / 69
+Intellect: 95 / 100
+Spirit: 112 / 110
+WepSkill: 300 (const)
+Speed: 1 / 2
+BaseDamage: 72 - 97 dmg 
+Hit Rating: 0%
+Attack Power: 295 / 295
+Crit Chance: 3,65% / 3,65%
+
+** Stat Scaling **
+AP: AP = BaseAP + AGI + 2* STR + EquipAP + BuffAP
+Crit: Crit = BaseCrit + 0,05*AGI + EquipCrit + BuffCrit
+Attack Speed will reduce time in between White Dmg Hits
+
+** Skills and Scaling **
+NormalDmg (White) = BaseDmg + (TotalAP-BaseAP)/14
+Claw: 105%*NormalDmg + 115, +1CP (45 Energy)
+Rake (HIT) - Dmg:  61 + 0,115*(TotalAP), +1CP (40 Energy)
+Rake (DoT) - Total Dmg (3 Ticks, 3s, 9s Total): 102 + 0,09*(TotalAP) 
+Rip (Finishing Move), DoT - (30 Energy)
+Rip - Number of Ticks: 4+CP, Alle 2 Sek.  
+Rip - Tick Damage:  47 +(CP-1)*31+Min(4;CP)/100*(AP-BaseAP)
+Ferocious Bite (Finishing Move): Causes Damage per Combo Points and converts each additional point of Energy into 0,5% extra damage, (35 Energy)
+Ferocious Bite Damage: (70+128*CP+0,07*TotalAP)*1,005^(Remaining Energy)
+Shred (Behind): 225%*NormalDmg + 180 (Behind), +1CP (60 Energy)
+Reshift: Shifts out and into Cat-Form (Removes "Tiger's Fury" Buff)
+Tiger's Fury: Increase damage done by 50 (adds to NormalDmg) and regenerates 10 Energy every 3 sec. for 6 sec
+Fearie Fire: Decreae Armor of target by 505 for 40 sec.
+
+** Talents **
+Ferocity (#/5): Reduces Energy Cost of Claw and Rake by # Energy (max. 5) 
+Feral Aggresion (#/5): Increase the Damage of Ferocious Bite by 3%*# (max 15%) 
+Open Wounds (#/3): Increase Damage of Rip by 5%*#. Increase Damage of Claw by 10%*# for each active Bleed effect on the target.
+Sharpend Claw (#/3): Increase Critical Strike Chance by 2%*#.
+Primal Fury (2/2): Your critical strikes that add combo points add an additional combo point.
+Blood Frenzy (2/2):Increase the duration of Tiger's Fury by 12 secconds. Tiger Fury increase your attack speed by 20% for 18 sec.
+Improved Shred (#/2): Increase the damage of Shred by 5%*# and reduces its Energy cost by 6*#.
+Predatory Strikes (3/3): Increase attack power by 10%. Increase damage cause by Claw and Rake by 20%.
+Ancient Brutality (2/2): Periodic ticks of Bleed effects restore 5 Energy.
+Berserk (1/1): Increase energy regeneration rate by 100% for 20 seconds. CD: 6 min. 
+Heart of the Wild (5/5): Increase Int and Strength by 20%.
+Carnage (2/2): Ferocious Bite has a 20% chance per combo point spent to refresh your active Rake and Rip effects and to add an additional combo point.
+Leader of the Pack (1/2): Increase cirtical chance by 3%.
+Furor (5/5): Gain 40 Energy when shapesifting into Cat Form.
+Natural Weapons (3/3): Increase damage by 10%. Increase chance to hit by 3%.
+Natural Shapeshifter (#/3): Reduce Mana cost of all shapeshifting by 10%*#.
+Omen of Clarity (1/1): 10% chance an attack (also normal white attacks) will enter a Clearcasting state. In Clearcasting state, the the cost of the next ability will be reduced by 100%.
+
+** General Rotation **
+if (Target_has_no_debuff:"Rip" and CP:>RipCP and Rip_active) then cast "Rip" //Option "Rip_active": Activate/Deactivate Rip, Option "RipCP": Min. ComboPoints to cast Rip
+if (CP:>4 and FB_active and Energy>FB_Energylvl) then cast "Ferocious Bite" //Option "FB_active": Activate/Deactivate Ferocious Bite, Option "FB_Energylvl": Energy-Level to Cast FB
+if (Energy<Reshift_Energylv and RS_active) then cast Reshift // Option "RS_active": Activate or Deactivate Reshift, "Reshift_Energylv": Energy-Level for Reshifting
+if (no_my_buff:"Tiger's Fury" and TF_active) then cast "Tiger's Fury" //option: Remaining Time, Option "TF_active": Activate/Deactivate Tiger's Fury
+if (Target_is_not_Bleed_Immune and has_no_debuff:"Rake" and (behind and nomybuff:Clearcasting) and Rake_active) cast "Rake" //Option "Rake_active": Activate/Deactivate Rake, (Clearcasting should be used for Shred if Behind)
+if ((my_buff:"Clearcasting" or Target_is_Bleed_Immune) and behind and Shred_active) then //Option "Shred_active": Activate/Deactivate Shred
+	cast "Shred" 
+elseif (Claw_active) // Option "Claw_active": Activate/Deactivate Claw
+	cast "Claw"
+end if
+if (Target_has_no_debuff:"Fearie Fire" and FF_active) then cast "Fearie Fire" //Option "FF_actice": Activate/Deactivate Fearie Fire
+
+
+** Boss Armor **
+Raid	Boss	Boss Armor
+Kara40	Krull	4752
+Kara40	Rook, Rupturan, Mephistroth	4611
+Kara40	Most Kara40 Bossess	4211
+Kara40	Echo, Sanv Tasdal	3850
+Kara40	Bishop	3402
+Naxx	Loatheb, Patch, Thaddius	4611
+Naxx	Most Naxx Bossess	4211
+Naxx	Faerlina, Noth	3850
+Naxx	Gothik, Kel'Thuzad	3402
+AQ40	Most AQ40 Bosses	4211
+AQ40	Emperor Vek'lor	3833
+AQ40	The Prophet Skeram	3402
+ES	Solnius	4712
+ES	Erennius	4912
+BWL	All BWL Bosses	4211
+MC	Sulfuron Harbinger	4786
+MC	Most MC Bosses	4211
+MC	Gehennas, Lucifron, Shazzrah	3402
+AQ20	Most AQ20 Bosses	4211
+AQ20	Moam	4113
+AQ20	Buru the Gorger	3402
+Kara10	Lord Blackwald	4325
+Kara10	Howlfang, Moroes	3892
+Kara10	Grizikil, Araxxna	3044
+ZG	Bloodlord Mandokir	4211
+ZG	High Priest Thekal	3850
+ZG	Most ZG Bosses	3402
+Onyxia's Lair	Onyxia	4211
+World Boss	Ostarius	5980
+World Boss	Dark Reaver of Karazhan	4285
+World Boss	Azuregos	4211
+World Boss	Nightmare Dragons	4211
+World Boss	Lord Kazzak	4211
+World Boss	Omen	4186
+World Boss	Nerubian Overseer	3761
+Silithus	Lord Skwol	4061
+Silithus	Prince Thunderaan	4213
+Strat UD	Atiesh	3850
+UBRS	Gyth	4061
+UBRS	Lord Valthalak	3400
+-   Apprentice Training Dummy   100
+-   Expert Training Dummy   3000
+-   Heroic Training Dummy   4211
+
+** Optional Boss-Debuffs for Armor Reduction **
+- Sunder Armor x5 (Rank 5): -2250 or Improved Exposed Armor: -2550
+- Spirit of Eskhandar: -1200
+- Fearie Fire (Rank 4): -505
+- Curse of Recklessness (Rank 4): -640
+
+** Potions & Consumeables **
+- Waffenbuff: Consecrated Sharpening Stone (100 AP vs. Undead) or Elemental Sharpening Stone (2% Crit)
+- Blasted Lands: Ground Scorpok Assay (25 AGI) or R.O.I.D.S (25 STR)
+- Elixir: Elixir of the Mongoose (25 AGI, 1% Crit)
+- Jujus: Juju Power (30 STR), Winterfall Firewater (35 AP) or Juju Might (40 AP)
+- Food: Smoked Desert Dumplings (20 STR) or Power Mushroom (20 STR) or Danonzo's Tel'abim medley (2% HASTE) or Sour Mountain Berry (10 AGI)
+- Potion: Potion of Quickness (5% Haste for 30 seconds, Treat as an On-Use CD5)
+
+** Buffs **
+- Leader of the Pack (+3% Crit while in Cat Form)
+- Mark of the Wild: +12 on all Stats 
+- Improved Mark of the Wild: +16 on all Stats  
+- Trueshot Aura: (1): +5% AP, (2):+55 AP
+- Blessing of Kings: +10% All Stats
+- Blessing of Might: +185 AP
+- Improved Blessing of Might: +240 AP
+- Windury Totem (procc): Each hit has a 20% chance of granting the attacker 1 extra attack with 315 extra melee attack power
+- Grace of Air Totem: +77 AGI
+- Strength of Earth Totem: +77 STR
+- Battle Shout: +232 AP
+- Improved Battle Shout (+25%): +290 AP
+
+** Gear / Set-Boni (depends on Equipment) **
+Cenarion Harness T1: 
+T1/3p: Reduce cooldown of Faerie Fire by 2 seconds
+T1/5p: Reduce the energy cost of Tiger's Fury by 5
+T1/8p: Ferocious Bite has a 20% chance per combo point to increase attack speed by 15% for the next 5 attacks
+
+Genesis Harness (T2.5): 
+T2.5/3: Reduce the Energy cost of Rake, Shred and Claw by 3
+T2.5/5:Damage of your Rake and Rip have a 6% and 10% chance respectively to empower your next Shred, Rake or Claw, increasing its critical strike chance and damage by 15%
+
+Harness of the Talon (T3.5): 
+T3.5/3: Damage from your Claw, Rake and Shred abilities has a 5% chance to increase your Attack Power by 100 for 10 sec
+T3.5/5: Speding combo points grants a stack of Primal Ferocity per combo point spent. Upon reaching 25 stacks, all stacks are consumed, increasing your Attack Power by 25% and granting 3 Energy each time you attack for 10 sec.
+
+** Idols (Mutliple Selection for Idol Swapping) **
+Idol of Savagery: Reduce the time between periodic ticks and the duration of Rake and Rip by 10%
+Idol of the Emeral Rot: Your finishing moves habe a 20% chance per combo point to deal 150 to 190 Nature damage.
+Idol of Ferocity: Reduce the energy cost of Claw and Rake by 3
+Idol of Laceration: Your finishing moves have a 20% chance per combo point to cause your next Shred to refund 15 Energy.
+
+** Combat Log **
+Time, Event, Ability, Result, Damage Normal, Damage Crit, Damage Tick, Remaining Time Rake, Remaining Time Rip, CP, Omen of Clarity (0/1), AP, Haste, Mana, {proccs}, [Remaining Time of On-Use CDs), Info 
+
+
+** Summary Modifiers **
