@@ -125,43 +125,28 @@
                                         <div class="char-middle">
                                             <h2 style="margin-bottom:10px; font-size:1rem;">Stat Weights (EP Calc)</h2>
                                             <div class="gp-stats-config">
-                                                <div class="gp-input-group"><label>Str</label><input type="number"
-                                                        id="weight_str" value="2.4" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>Agi</label><input type="number"
-                                                        id="weight_agi" value="2.5" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>AP</label><input type="number"
-                                                        id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>Crit</label><input type="number"
-                                                        id="weight_crit" value="22.0" onchange="recalcItemScores()"></div>
-                                                <div class="gp-input-group"><label>Hit</label><input type="number"
-                                                        id="weight_hit" value="18.0" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Str</label><input type="number" id="weight_str" value="2.4" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Agi</label><input type="number" id="weight_agi" value="2.5" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>AP</label><input type="number" id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Crit</label><input type="number" id="weight_crit" value="22.0" onchange="recalcItemScores()"></div>
+                                                <div class="gp-input-group"><label>Hit</label><input type="number" id="weight_hit" value="18.0" onchange="recalcItemScores()"></div>
                                             </div>
 
                                             <h2 style="margin:20px 0 10px 0; font-size:1rem;">Current Gear Stats</h2>
-                                            <div class="gp-stats-preview"
-                                                style="background:transparent; border:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:10px;">
-
+                                            <div class="gp-stats-preview" style="background:transparent; border:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:10px;">
                                                 <div style="background: rgba(255, 69, 0, 0.15); border: 1px solid var(--druid-orange); padding: 10px 20px; border-radius: 8px; text-align: center; width: 100%;">
-                                                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">
-                                                        Gear Score (EP)</div>
-                                                    <div id="gp_gs" style="font-size: 2rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255, 125, 10, 0.5);">
-                                                        0</div>
-                                                    <div style="font-size: 0.65rem; color: #666; margin-top: -5px;">
-                                                        (Items + Sets only)</div>
+                                                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Gear Score (EP)</div>
+                                                    <div id="gp_gs" style="font-size: 2rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255, 125, 10, 0.5);">0</div>
                                                 </div>
-
                                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%;">
                                                     <div class="gp-stat-box" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center;">
-                                                        <div style="font-size:0.75rem; color:#aaa;">AP</div>
-                                                        <div id="gp_ap" style="font-size:1.1rem; color:#ff9800; font-weight:600;">0</div>
+                                                        <div style="font-size:0.75rem; color:#aaa;">AP</div><div id="gp_ap" style="font-size:1.1rem; color:#ff9800; font-weight:600;">0</div>
                                                     </div>
                                                     <div class="gp-stat-box" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center;">
-                                                        <div style="font-size:0.75rem; color:#aaa;">Crit</div>
-                                                        <div id="gp_crit" style="font-size:1.1rem; color:#ffeb3b; font-weight:600;">0%</div>
+                                                        <div style="font-size:0.75rem; color:#aaa;">Crit</div><div id="gp_crit" style="font-size:1.1rem; color:#ffeb3b; font-weight:600;">0%</div>
                                                     </div>
                                                     <div class="gp-stat-box" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center;">
-                                                        <div style="font-size:0.75rem; color:#aaa;">Hit</div>
-                                                        <div id="gp_hit" style="font-size:1.1rem; color:#fff; font-weight:600;">0%</div>
+                                                        <div style="font-size:0.75rem; color:#aaa;">Hit</div><div id="gp_hit" style="font-size:1.1rem; color:#fff; font-weight:600;">0%</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -170,11 +155,8 @@
                                                 <button onclick="resetGear()" class="btn-mini" style="background:#333; width:100%;">Reset Gear</button>
                                             </div>
                                             <div id="dbStatus" style="font-size:0.65rem; color:#666; margin-top:10px;">DB not loaded</div>
-                                            
                                             <div class="char-bottom" id="charBottomRow"></div>
-
                                         </div>
-                                        
                                         <div class="char-right" id="charRightCol"></div>
                                     </div>
                                 </div>
@@ -368,7 +350,7 @@
                                                 <h2>🌿 Talente</h2>
                                             </div>
                                             <div class="card-body">
-                                                <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Only optional talents listed. Others assumed constant (e.g., Open Wounds 3/3).</p>
+                                                <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Only optional talents listed. Others assumed constant.</p>
                                                 <div class="input-group-small"><label>Ferocity (0-5)</label><input type="number" id="tal_ferocity" value="5" min="0" max="5"></div>
                                                 <div class="input-group-small"><label>Feral Aggression (0-5)</label><input type="number" id="tal_feral_aggression" value="5" min="0" max="5"></div>
                                                 <div class="input-group-small"><label>Imp. Shred (0-2)</label><input type="number" id="tal_imp_shred" value="2" min="0" max="2"></div>
@@ -382,21 +364,11 @@
                                                 <h2>💀 Enemy</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Target Level</label>
-                                                    <div class="select-wrapper"><select id="enemy_level">
-                                                            <option value="63" selected>Level 63 (Boss)</option>
-                                                            <option value="60">Level 60</option>
-                                                        </select></div>
-                                                </div>
-                                                <div class="input-group"><label>Enemy Type</label>
-                                                    <div class="select-wrapper"><select id="enemy_type">
-                                                            <option value="undead">Undead</option>
-                                                            <option value="humanoid" selected>Humanoid / Other</option>
-                                                        </select></div>
-                                                </div>
-                                                <div class="input-group"><label>Armor</label>
-                                                    <input type="number" id="enemy_armor" value="3731">
-                                                </div>
+                                                <div class="input-group"><label>Select Boss (Sets Armor)</label><div class="select-wrapper"><select id="enemy_boss_select"><option value="">-- Custom / Manual --</option></select></div></div>
+                                                
+                                                <div class="input-group"><label>Target Level</label><div class="select-wrapper"><select id="enemy_level"><option value="63" selected>Level 63 (Boss)</option><option value="60">Level 60</option></select></div></div>
+                                                <div class="input-group"><label>Enemy Type</label><div class="select-wrapper"><select id="enemy_type"><option value="undead">Undead</option><option value="humanoid" selected>Humanoid / Other</option></select></div></div>
+                                                <div class="input-group"><label>Base Armor</label><input type="number" id="enemy_armor" value="3731"></div>
                                                 <div class="toggle-wrapper" style="margin-top:10px;">
                                                     <label class="toggle"><input type="checkbox" id="enemy_can_bleed" checked><span class="slider"></span><span class="label-text">Can Bleed</span></label>
                                                 </div>
@@ -543,15 +515,8 @@
                                         <table class="log-table">
                                             <thead>
                                                 <tr>
-                                                    <th>Time</th>
-                                                    <th>Event</th>
-                                                    <th>Ability</th>
-                                                    <th>Result</th>
-                                                    <th>Dmg</th>
-                                                    <th style="color:#ffeb3b">E</th>
-                                                    <th style="color:#ff9800">CP</th>
-                                                    <th style="color:#81d4fa">Mana</th>
-                                                    <th>Info</th>
+                                                    <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
+                                                    <th>Dmg</th><th>Info</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="logTableBody"></tbody>

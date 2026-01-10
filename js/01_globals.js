@@ -1,7 +1,7 @@
 /**
  * Feral Simulation - File 1: Global State & Constants
  * Updated for Turtle WoW Patch 1.18 (Feral Cat)
- * Includes new Buffs, Consumables, and Debuff Logic.
+ * Includes Boss Armor Database
  */
 
 // ============================================================================
@@ -31,13 +31,14 @@ var CONFIG_IDS = [
 
     // Enemy Settings
     "enemy_level", "enemy_armor", "enemy_can_bleed",
-    "enemy_type", // New: Undead or Other
+    "enemy_type", 
+    "enemy_boss_select", // NEW: Boss Preset Dropdown
 
-    // Enemy Debuffs (New)
-    "debuff_major_armor", // Sunder vs IEA
-    "debuff_eskhandar",
-    "debuff_ff",
-    "debuff_cor",
+    // Enemy Debuffs
+    "debuff_major_armor", // Sunder (2250) or IEA (2550)
+    "debuff_eskhandar",   // -1200
+    "debuff_ff",          // -505
+    "debuff_cor",         // -640
 
     // Rotation / Logic
     "rota_position",
@@ -52,29 +53,19 @@ var CONFIG_IDS = [
     // Gear Specifics
     "set_t05_4p", "meta_wolfshead", "item_mcp",           
 
-    // Buffs & Consumables (Reorganized)
-    
-    // Selectors (Mutually Exclusive)
-    "consum_wep",       // Consecrated vs Elemental
-    "consum_blasted",   // Scorpok vs ROIDS
-    "consum_juju",      // Firewater vs Might
-    "consum_food",      // Str vs Agi vs Haste
-    
-    // Checkboxes
+    // Buffs & Consumables
+    "consum_wep",       
+    "consum_blasted",   
+    "consum_juju",      
+    "consum_food",      
     "consum_mongoose",
-    "consum_juju_power", // Stackable
+    "consum_juju_power", 
     "consum_potion_quickness",
 
     // Raid Buffs
-    "buff_lotp",
-    "buff_motw",        // Select: None, Reg, Imp
-    "buff_kings",
-    "buff_might",       // Select: None, Reg, Imp
-    "buff_tsa",         // Select: None, Reg, Mod(%)
-    "buff_bs",          // Select: None, Reg, Imp
-    "buff_wf_totem",
-    "buff_goa_totem",
-    "buff_soe_totem",
+    "buff_lotp", "buff_motw", "buff_kings", "buff_might",
+    "buff_tsa", "buff_bs", "buff_wf_totem",
+    "buff_goa_totem", "buff_soe_totem",
     
     // Talents
     "tal_ferocity", "tal_feral_aggression", "tal_open_wounds",
@@ -92,18 +83,11 @@ var SLOT_LAYOUT = {
 
 // Base Stats (Level 60 - Turtle WoW 1.18)
 const RACE_STATS = {
-    "Tauren": { 
-        str: 70, agi: 55, sta: 72, int: 95, spi: 112, 
-        ap: 295, crit: 3.65, speed: 1.0, 
-        minDmg: 72, maxDmg: 97 
-    }, 
-    "NightElf": { 
-        str: 62, agi: 65, sta: 69, int: 100, spi: 110, 
-        ap: 295, crit: 3.65, speed: 2.0, 
-        minDmg: 72, maxDmg: 97 
-    }
+    "Tauren": { str: 70, agi: 55, sta: 72, int: 95, spi: 112, ap: 295, crit: 3.65, speed: 1.0, minDmg: 72, maxDmg: 97 }, 
+    "NightElf": { str: 62, agi: 65, sta: 69, int: 100, spi: 110, ap: 295, crit: 3.65, speed: 2.0, minDmg: 72, maxDmg: 97 }
 };
 
+// Combat Constants
 const CONSTANTS = {
     GCD: 1.0,
     ENERGY_TICK: 2.0,
@@ -112,9 +96,69 @@ const CONSTANTS = {
     GLANCE_PENALTY: 0.3
 };
 
+// Simulation Object
 function SimObject(id, name) { 
     this.id = id; 
     this.name = name; 
     this.config = {}; 
     this.results = null; 
 }
+
+// Boss Armor Database
+const BOSS_PRESETS = [
+    { group: "World", name: "Apprentice Training Dummy", armor: 100 },
+    { group: "World", name: "Expert Training Dummy", armor: 3000 },
+    { group: "World", name: "Heroic Training Dummy", armor: 4211 },
+    
+    { group: "Naxxramas", name: "Most Bosses", armor: 4211 },
+    { group: "Naxxramas", name: "Loatheb, Patch, Thaddius", armor: 4611 },
+    { group: "Naxxramas", name: "Faerlina, Noth", armor: 3850 },
+    { group: "Naxxramas", name: "Gothik, Kel'Thuzad", armor: 3402 },
+
+    { group: "AQ40", name: "Most Bosses", armor: 4211 },
+    { group: "AQ40", name: "Emperor Vek'lor", armor: 3833 },
+    { group: "AQ40", name: "The Prophet Skeram", armor: 3402 },
+
+    { group: "BWL", name: "All Bosses", armor: 4211 },
+
+    { group: "Molten Core", name: "Most Bosses", armor: 4211 },
+    { group: "Molten Core", name: "Sulfuron Harbinger", armor: 4786 },
+    { group: "Molten Core", name: "Gehennas, Lucifron, Shazzrah", armor: 3402 },
+
+    { group: "Kara 40", name: "Most Bosses", armor: 4211 },
+    { group: "Kara 40", name: "Krull", armor: 4752 },
+    { group: "Kara 40", name: "Rook, Rupturan, Mephistroth", armor: 4611 },
+    { group: "Kara 40", name: "Echo, Sanv Tasdal", armor: 3850 },
+    { group: "Kara 40", name: "Bishop", armor: 3402 },
+
+    { group: "Emerald Sanctum", name: "Solnius", armor: 4712 },
+    { group: "Emerald Sanctum", name: "Erennius", armor: 4912 },
+
+    { group: "Zul'Gurub", name: "Most Bosses", armor: 3402 },
+    { group: "Zul'Gurub", name: "Bloodlord Mandokir", armor: 4211 },
+    { group: "Zul'Gurub", name: "High Priest Thekal", armor: 3850 },
+
+    { group: "AQ20", name: "Most Bosses", armor: 4211 },
+    { group: "AQ20", name: "Moam", armor: 4113 },
+    { group: "AQ20", name: "Buru the Gorger", armor: 3402 },
+
+    { group: "Kara 10", name: "Lord Blackwald", armor: 4325 },
+    { group: "Kara 10", name: "Howlfang, Moroes", armor: 3892 },
+    { group: "Kara 10", name: "Grizikil, Araxxna", armor: 3044 },
+
+    { group: "World Bosses", name: "Ostarius", armor: 5980 },
+    { group: "World Bosses", name: "Dark Reaver of Karazhan", armor: 4285 },
+    { group: "World Bosses", name: "Azuregos", armor: 4211 },
+    { group: "World Bosses", name: "Nightmare Dragons", armor: 4211 },
+    { group: "World Bosses", name: "Lord Kazzak", armor: 4211 },
+    { group: "World Bosses", name: "Omen", armor: 4186 },
+    { group: "World Bosses", name: "Nerubian Overseer", armor: 3761 },
+
+    { group: "Silithus", name: "Prince Thunderaan", armor: 4213 },
+    { group: "Silithus", name: "Lord Skwol", armor: 4061 },
+
+    { group: "Other", name: "Onyxia", armor: 4211 },
+    { group: "Other", name: "UBRS: Gyth", armor: 4061 },
+    { group: "Other", name: "UBRS: Lord Valthalak", armor: 3400 },
+    { group: "Other", name: "Strat UD: Atiesh", armor: 3850 }
+];

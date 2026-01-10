@@ -1,7 +1,7 @@
 /**
  * Feral Simulation - File 4: UI Manager
  * Updated for Turtle WoW 1.18 (Feral Cat)
- * Handles Sidebar, Multi-Sim Management, Inputs, Result Rendering, and Extended Combat Log
+ * Handles Sidebar, Multi-Sim Management, Inputs, Result Rendering, Boss Selection & Extended Logs
  */
 
 // ============================================================================
@@ -296,10 +296,13 @@ function runAllSims() {
 // ============================================================================
 
 function setupUIListeners() {
-    // Inputs Change -> Save State
+    // 1. Standard Inputs Change -> Save State
     var inputs = document.querySelectorAll("input, select");
     inputs.forEach(function(el) {
         el.addEventListener("change", function() {
+            // Ignore boss select in general loop to prevent double firing, handled separately
+            if(el.id === "enemy_boss_select") return;
+
             if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
                 saveSimData(ACTIVE_SIM_INDEX);
                 // Update text fields immediately
@@ -309,9 +312,63 @@ function setupUIListeners() {
         });
     });
 
+    // 2. Boss Select Dropdown Logic
+    renderBossSelect();
+    var bossSel = document.getElementById("enemy_boss_select");
+    if(bossSel) {
+        bossSel.addEventListener("change", function() {
+            var val = bossSel.value;
+            // If value is set (not empty), update Armor Field
+            if(val) {
+                var armorInput = document.getElementById("enemy_armor");
+                if(armorInput) {
+                    armorInput.value = val;
+                    // Trigger updates
+                    updateEnemyInfo();
+                }
+            }
+            if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
+                saveSimData(ACTIVE_SIM_INDEX);
+            }
+        });
+    }
+
     // Run Button
     var btn = document.getElementById('btnRun');
     if (btn) btn.addEventListener('click', runSimulation);
+}
+
+/**
+ * Populates the Boss Select Dropdown from BOSS_PRESETS (defined in globals)
+ */
+function renderBossSelect() {
+    var sel = document.getElementById("enemy_boss_select");
+    if(!sel || !BOSS_PRESETS) return;
+    
+    // Clear existing options except the first "Custom" one
+    while(sel.options.length > 1) {
+        sel.remove(1);
+    }
+    
+    // Group by 'group' key
+    var groups = {};
+    BOSS_PRESETS.forEach(b => {
+        if(!groups[b.group]) groups[b.group] = [];
+        groups[b.group].push(b);
+    });
+    
+    // Create OptGroups
+    for(var g in groups) {
+        var grp = document.createElement("optgroup");
+        grp.label = g;
+        groups[g].forEach(b => {
+            var opt = document.createElement("option");
+            opt.value = b.armor;
+            opt.innerText = b.name + " (" + b.armor + ")";
+            grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+    }
 }
 
 
@@ -324,10 +381,10 @@ function updateEnemyInfo() {
     if (maj === "sunder") debuff += 2250;
     else if (maj === "iea") debuff += 2550;
 
-    // Eskhandar
+    // Eskhandar (Stackable)
     if (getVal("debuff_eskhandar")) debuff += 1200;
 
-    // Curse of Recklessness
+    // Curse of Recklessness (Stackable)
     if (getVal("debuff_cor")) debuff += 640;
 
     // Faerie Fire (Check both Debuff box AND Rotation box, max 1 application)
@@ -512,7 +569,7 @@ function renderLogTable(log) {
 }
 
 function updateLogView() {
-    // Dynamic Header Update to match requested columns
+    // Dynamic Headers for Extended Log
     var container = document.querySelector(".log-container table thead tr");
     if(container) {
         container.innerHTML = `
@@ -532,13 +589,13 @@ function updateLogView() {
     var end = start + LOG_PER_PAGE;
     var slice = LOG_DATA.slice(start, end);
     
-    // Helpers for display
+    // Helper to hide zeroes
     var val = (v) => v > 0 ? Math.floor(v) : "";
     var valF = (v) => v > 0 ? v.toFixed(1) : "";
 
     slice.forEach(e => {
         var tr = document.createElement("tr");
-        // Colors
+        // Styling based on event
         var cEvt = "#ccc";
         if(e.event === "Damage") cEvt = "#fff";
         if(e.event === "Cast") cEvt = "#ffd700";
@@ -584,11 +641,10 @@ function prevLogPage() {
 function downloadCSV() {
     if(!LOG_DATA || LOG_DATA.length===0) return;
     
-    // Exact requested columns
     var csv = "Time,Event,Ability,Result,Damage Normal,Damage Crit,Damage Tick,Special Damage,Remaining Time Rake,Remaining Time Rip,CP,Omen of Clarity (0/1),AP,Haste,Attack Speed,Mana,Procs,On-Use CDs,Info\n";
     
     LOG_DATA.forEach(r => {
-        // Sanitize string fields to avoid CSV breaking
+        // Sanitize
         var i = (r.info||"").replace(/,/g, " ");
         var p = (r.procs||"").replace(/,/g, " ");
         var c = (r.cds||"").replace(/,/g, " ");
