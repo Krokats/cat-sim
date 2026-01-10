@@ -1,7 +1,7 @@
 /**
  * Feral Simulation - File 3: Gear Planner Logic & Database
  * Updated for Turtle WoW 1.18 (Feral Cat)
- * Fixed: Weapon Skills (Mace/Polearm) ignored for Feral. Only 'Feral Combat' counts.
+ * Strict adherence to provided formulas and constants.
  */
 
 var ITEM_ID_MAP = {}; // Performance cache for lookups
@@ -506,18 +506,27 @@ function calculateEnchantScore(ench) {
 function calculateGearStats() {
     var raceSel = document.getElementById("char_race");
     var raceName = raceSel ? raceSel.value : "Tauren";
+    
+    // Use the exact stats provided in prompts via globals.js
     var baseStats = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
+    // Initialize with Base Stats
+    // Formula Requirements:
+    // AP = BaseAP + AGI + 2*STR + EquipAP + BuffAP
+    // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
     var cs = {
         str: baseStats.str,
         agi: baseStats.agi,
-        ap: 0,
-        crit: 0,
+        int: baseStats.int, // For HotW scaling
+        
+        ap: baseStats.ap,   // Initial Base AP
+        crit: baseStats.crit,// Initial Base Crit
+        
         hit: 0,
         haste: 0,
-        wepSkill: 300, // Fixed Feral Skill
-        wepDmgMin: 0,
-        wepDmgMax: 0
+        wepSkill: 300, // CONSTANT as per prompt
+        wepDmgMin: baseStats.minDmg,
+        wepDmgMax: baseStats.maxDmg
     };
 
     var setCounts = {};
@@ -537,18 +546,14 @@ function calculateGearStats() {
                 
                 cs.str += (item.strength || 0);
                 cs.agi += (item.agility || 0);
+                cs.int += (item.intellect || 0);
+                
                 cs.ap += (e.attackPower || 0);
                 cs.ap += (e.feralAttackPower || 0);
 
                 cs.crit += (e.crit || 0);
                 cs.hit += (e.hit || 0);
                 
-                // Track Weapon Damage if it's Main Hand (for potential Engine usage)
-                if (slot === "Main Hand") {
-                    // Engine will decide whether to use this or base paw damage
-                    // But we store it here
-                }
-
                 // CUSTOM TEXT PARSING (Turtle WoW Custom Feral Items)
                 if (e.custom && Array.isArray(e.custom)) {
                     e.custom.forEach(function(line) {
@@ -558,12 +563,6 @@ function calculateGearStats() {
                             if (line.includes("Cat") || line.includes("forms")) {
                                 cs.ap += parseInt(matchAP[1]);
                             }
-                        }
-                        // Regex for "Increased Feral Combat +5" (Turtle Specific)
-                        // IGNORE Polearms/Maces as per user instruction
-                        var matchSkill = line.match(/Equip: Increased Feral Combat \+(\d+)/i);
-                        if (matchSkill) {
-                            cs.wepSkill += parseInt(matchSkill[1]);
                         }
                     });
                 }
@@ -598,7 +597,7 @@ function calculateGearStats() {
     }
 
     // 4. BUFFS & CONSUMABLES
-    if (getVal("buff_motw")) { cs.str += 12; cs.agi += 12; }
+    if (getVal("buff_motw")) { cs.str += 12; cs.agi += 12; cs.int += 12; }
     if (getVal("buff_mongoose")) { cs.agi += 25; cs.crit += 2; }
     if (getVal("buff_juju_power")) { cs.str += 30; }
     if (getVal("buff_juju_might")) { cs.ap += 40; }
@@ -613,23 +612,41 @@ function calculateGearStats() {
     if (getVal("buff_battle_shout")) { cs.ap += 290; }
     if (getVal("buff_trueshot")) { cs.ap += 100; }
     
-    // 5. MULTIPLIERS (Kings, Zandalar)
+    // 5. ATTRIBUTE MULTIPLIERS
     var statMod = 1.0;
     if (getVal("buff_bok")) statMod *= 1.1;
     if (getVal("buff_zandalar")) statMod *= 1.15;
     
-    cs.str = Math.floor(cs.str * statMod);
-    cs.agi = Math.floor(cs.agi * statMod);
+    // Heart of the Wild (5/5) (Constant) -> 20% Str/Int
+    var hotwMod = 1.20; 
+
+    // Apply Multipliers
+    cs.str = Math.floor(cs.str * statMod * hotwMod);
+    cs.int = Math.floor(cs.int * statMod * hotwMod);
+    cs.agi = Math.floor(cs.agi * statMod); // No HotW for Agi
     
-    // 6. DERIVED STATS
-    // 1 Str = 2 AP, 1 Agi = 1 AP
+    // 6. DERIVED STATS (Scaling)
+    // AP = BaseAP + AGI + 2*STR + EquipAP + BuffAP
+    // (cs.ap currently holds BaseAP + EquipAP + BuffAP)
     cs.ap += (cs.str * 2) + (cs.agi * 1);
     
-    // 20 Agi = 1% Crit
-    var critFromAgi = cs.agi / 20.0;
+    // Predatory Strikes (3/3) (Constant) -> 10% AP
+    // "Increase attack power by 10%"
+    cs.ap = Math.floor(cs.ap * 1.10);
+
+    // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
+    // (cs.crit currently holds BaseCrit + EquipCrit + BuffCrit)
+    var critFromAgi = cs.agi * 0.05;
     cs.crit += critFromAgi;
     
-    if (getVal("buff_leader_pack")) cs.crit += 3;
+    // Constant Talents/Auras
+    // Leader of the Pack (1/2) -> +3% Crit
+    // Sharpened Claws (3/3) -> +6% Crit
+    cs.crit += 3.0; // LotP
+    cs.crit += 6.0; // Sharpened Claws
+    
+    // Natural Weapons (3/3) -> +3% Hit (Damage handled in Engine)
+    cs.hit += 3.0;
 
     // 7. SET BONUSES & UI FLAGS
     if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
@@ -659,16 +676,15 @@ function calculateGearStats() {
     updateInput("stat_hit", cs.hit, false);
     updateInput("stat_haste", cs.haste, false);
     
-    // Update Weapon Skill in Input
+    // Weapon Skill (Constant 300)
     updateInput("stat_wep_skill", cs.wepSkill, false); 
     
-    // Preview Box
+    // Update Preview Box
     var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(cs.ap);
     var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = cs.crit.toFixed(2) + "%";
     var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = cs.hit.toFixed(2) + "%";
     
-    // Default Feral Weapon Damage (Level 60 Paw) ~54-55 DPS?
-    // We set placeholder here, Engine will calculate.
-    updateInput("stat_wep_dmg_min", 55, false);
-    updateInput("stat_wep_dmg_max", 85, false);
+    // Update Hidden Min/Max Dmg for Engine
+    updateInput("stat_wep_dmg_min", cs.wepDmgMin, false);
+    updateInput("stat_wep_dmg_max", cs.wepDmgMax, false);
 }

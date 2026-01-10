@@ -50,16 +50,18 @@ function addSim(isInit) {
     var id = Date.now();
     var newSim = new SimObject(id, "Simulation " + (SIM_LIST.length + 1));
     
-    // Default Config (could also clone current)
-    newSim.config = getSimInputs(); // Grabs defaults from UI if first load, or current UI
+    // Default Config will be grabbed from current UI state via getSimInputs()
+    // This ensures defaults match the UI
+    newSim.config = typeof getSimInputs === "function" ? getSimInputs() : {}; 
     newSim.gear = {}; 
     newSim.enchants = {};
 
-    // Copy current gear if not init
+    // Copy current gear if not init (Cloning for convenience)
     if (!isInit && SIM_LIST.length > 0) {
         newSim.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
         newSim.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
-        newSim.config = getSimInputs(); // Copy current inputs
+        // Also copy current config settings
+        newSim.config = getSimInputs();
     }
 
     SIM_LIST.push(newSim);
@@ -145,7 +147,11 @@ function updateSimName() {
 function saveSimData(idx) {
     var s = SIM_LIST[idx];
     if(!s) return;
-    s.config = getSimInputs(); // Collects all inputs
+    // We need to define getSimInputs in engine or here. 
+    // Usually it is in engine.js, but since UI needs to save, we assume it's globally available.
+    if(typeof getSimInputs === 'function') {
+        s.config = getSimInputs();
+    }
     s.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
     s.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
 }
@@ -164,19 +170,8 @@ function loadSimDataToUI(sim) {
     var c = sim.config;
     if(!c) return;
 
-    var setInput = function(id, val, isChk) {
-        var el = document.getElementById(id);
-        if(el) {
-            if(isChk) el.checked = (val === 1 || val === true);
-            else el.value = val;
-        }
-    };
-
-    // Apply config to all known IDs
+    // Apply config to all known IDs (defined in 01_globals.js)
     CONFIG_IDS.forEach(function(id) {
-        // Some config IDs might match keys in 'c', others need mapping if names differ
-        // My getSimInputs() returns camelCase keys or exact IDs depending on implementation.
-        // Let's rely on CONFIG_IDS mapping directly to DOM IDs for simplicity.
         if (c[id] !== undefined) {
              var el = document.getElementById(id);
              if(el) {
@@ -185,6 +180,10 @@ function loadSimDataToUI(sim) {
              }
         }
     });
+    
+    // Trigger updates for derived UI elements (summaries)
+    updatePlayerStats();
+    updateEnemyInfo();
 }
 
 // ============================================================================
@@ -202,15 +201,10 @@ function renderComparisonTable() {
         
         var tr = document.createElement("tr");
         
-        // Stats for Overview
-        // We need to calculate gear stats for this sim to show AP/Crit/Hit
-        // But doing full calculation for all is heavy. 
-        // We can just use cached results or 'NA' if not run.
         var dpsMin = "-", dpsAvg = "-", dpsMax = "-";
         if (r) {
             dpsAvg = Math.floor(r.dps);
-            // Min/Max requires tracking in engine (implemented in aggregateResults)
-            // For now use Avg
+            // Min/Max placeholder
         }
 
         // Build Row
@@ -223,7 +217,7 @@ function renderComparisonTable() {
             <td>${getSavedStat(sim, 'stat_hit')}%</td>
             <td>${getSavedStat(sim, 'stat_haste')}%</td>
             <td>${c.enemy_level || 63}</td>
-            <td>${getRotationShort(c)}</td>
+            <td style="font-size:0.8rem;">${getRotationShort(c)}</td>
             <td style="font-size:0.8rem;">${getGearShort(sim)}</td>
             <td style="text-align:right; color:#90caf9;">${dpsMin}</td>
             <td style="text-align:right; color:#ffb74d; font-weight:bold;">${dpsAvg}</td>
@@ -241,10 +235,14 @@ function getSavedStat(sim, id) {
 }
 
 function getRotationShort(c) {
-    var s = "";
-    if (c.rota_powershift) s += "Shift, ";
-    if (c.rota_position === 'back') s += "Shred"; else s += "Claw";
-    return s;
+    var parts = [];
+    if (c.rota_position === 'back') parts.push("Shred"); else parts.push("Claw");
+    
+    if (c.use_reshift) parts.push("Shift<" + c.reshift_energy);
+    if (c.use_rip) parts.push("Rip>" + c.rip_cp);
+    if (c.use_fb) parts.push("FB>" + c.fb_energy);
+    
+    return parts.join(", ");
 }
 
 function getGearShort(sim) {
@@ -258,7 +256,6 @@ function getGearShort(sim) {
 
 function runAllSims() {
     showProgress("Running All Simulations...");
-    // Async loop
     var idx = 0;
     
     function next() {
@@ -268,32 +265,20 @@ function runAllSims() {
             return;
         }
         
-        // Load Sim, Run, Save
         var sim = SIM_LIST[idx];
-        // We need to properly instantiate inputs for the engine
-        // Engine takes 'config' object. 
-        // Ensure 'sim.config' is up to date if we were editing it?
-        // Actually, runCoreSimulation expects the object structure returned by getSimInputs().
-        // sim.config IS that structure (mostly).
         
         try {
-            // Mock UI loading so engine can read? No, engine reads from passed config object now.
-            // But we need to make sure calculateGearStats was run to populate stats in config.
-            // Simplified: We assume sim.config has stats. If not, results might be wrong.
-            // For robustness: Load sim to UI, Run, Save Result, Move on.
-            // This is slower but safer.
-            
-            // NOTE: Changing UI forces re-render. We can do it silently? 
-            // Let's just update the config object locally.
-            
-            // To properly calc stats, we need ITEM_DB. 
-            // Let's rely on what's saved.
-            
-            var res = runCoreSimulation(sim.config); // Single run? No, we need iteration wrapper
-            
-            // Wrapper for iterations (copied from runSimulation)
+            // Engine must be available as runCoreSimulation
+            if (typeof runCoreSimulation !== 'function') {
+                throw new Error("Engine not loaded");
+            }
+
             var all = [];
-            for(var i=0; i< (sim.config.iterations || 100); i++) {
+            var iterations = sim.config.iterations || 100;
+            // Quick run for mass comparison, maybe limit if count is huge? 
+            // We stick to config.
+            
+            for(var i=0; i < iterations; i++) {
                 all.push(runCoreSimulation(sim.config));
             }
             sim.results = aggregateResults(all);
@@ -322,34 +307,24 @@ function setupUIListeners() {
         el.addEventListener("change", function() {
             if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
                 saveSimData(ACTIVE_SIM_INDEX);
+                // Update text fields immediately
+                updatePlayerStats();
+                updateEnemyInfo();
             }
         });
     });
 
     // Run Button
-    var btn = document.getElementById('runSimBtn');
+    var btn = document.getElementById('btnRun');
     if (btn) btn.addEventListener('click', runSimulation);
-
-    // Reset Button
-    var rst = document.getElementById('resetBtn');
-    if (rst) rst.addEventListener('click', function () {
-        if (confirm("Reset current simulation?")) {
-            resetGear();
-            // Defaults
-            document.getElementById("simTime").value = 60;
-            saveSimData(ACTIVE_SIM_INDEX);
-        }
-    });
 }
 
 
 function updateEnemyInfo() {
-    var lvl = getVal('enemy_level');
     var armor = getVal('enemy_armor');
     
-    // Calculate DR
-    // DR = Armor / (Armor + 400 + 85 * (AttackerLvl + 4.5 * (AttackerLvl - 59)))
-    // Attacker 60 -> Const = 5882.5
+    // Turtle WoW 1.18 DR Formula approximation for Lvl 60 attacker
+    // DR = Armor / (Armor + 400 + 85 * (60 + 4.5 * (60 - 59))) = Armor / (Armor + 5882.5)
     var dr = armor / (armor + 5882.5);
     var pct = (dr * 100).toFixed(2);
     
@@ -357,8 +332,7 @@ function updateEnemyInfo() {
 }
 
 function updatePlayerStats() {
-    // Just updates the UI text from Inputs
-    // Inputs are populated by 03_gear.js -> calculateGearStats()
+    // Just updates the UI text from Inputs (which are populated by 03_gear.js)
     var ap = getVal("stat_ap");
     var crit = getVal("stat_crit");
     var hit = getVal("stat_hit");
@@ -382,9 +356,20 @@ function updateRotaSummary() {
     list.innerHTML = "";
     var add = (t, c) => { var li = document.createElement("li"); li.innerText = t; if(c) li.style.color = c; list.appendChild(li); };
     
-    if(getVal("rota_powershift")) add("Powershifting", "#4caf50");
-    if(getVal("rota_position") === "back") add("Behind (Shred)", "#ff9800"); else add("Front (Claw)", "#f44336");
-    if(getVal("rota_rake")) add("Use Rake", "#e57373");
+    // Priority Display
+    if(getVal("use_rip")) add("Rip (>" + getVal("rip_cp") + " CP)", "#f44336");
+    if(getVal("use_fb")) add("Bite (> 5 CP, >" + getVal("fb_energy") + " En)", "#ff5722");
+    
+    if(getVal("use_reshift")) add("Reshift (<" + getVal("reshift_energy") + " En)", "#4caf50");
+    if(getVal("use_tf")) add("Tiger's Fury", "#ff9800");
+    if(getVal("use_ff")) add("Faerie Fire", "#a335ee");
+    if(getVal("use_rake")) add("Rake", "#e57373");
+    
+    if(getVal("rota_position") === "back") {
+        if(getVal("use_shred")) add("Shred (Behind)", "#ffeb3b");
+    } else {
+        if(getVal("use_claw")) add("Claw (Front)", "#ff9800");
+    }
 }
 
 function updateTrinketSummary() {
@@ -442,7 +427,16 @@ function renderDistBar(r) {
     for(var k in r.dmgSources) sorted.push({n:k, v:r.dmgSources[k]});
     sorted.sort((a,b) => b.v - a.v);
     
-    var colors = { "Auto Attack": "#fff", "Shred": "#ffeb3b", "Ferocious Bite": "#ff5722", "Rip": "#d32f2f", "Rake": "#f44336", "Claw": "#ff9800" };
+    var colors = { 
+        "Auto Attack": "#fff", 
+        "Shred": "#ffeb3b", 
+        "Ferocious Bite": "#ff5722", 
+        "Rip": "#d32f2f", 
+        "Rake": "#f44336", 
+        "Claw": "#ff9800",
+        "Rake (DoT)": "#e57373",
+        "Rip (DoT)": "#b71c1c"
+    };
     
     sorted.forEach(s => {
         var pct = (s.v / total) * 100;
@@ -565,11 +559,8 @@ function downloadCSV() {
 // ============================================================================
 function exportSettings() {
     // Save all Sims
-    // In comparison view, we want to export ALL sims.
-    // Let's dump SIM_LIST to json and base64
     var json = JSON.stringify(SIM_LIST);
     var b64 = LZString.compressToBase64(json);
-    // Create a temporary text area to copy
     navigator.clipboard.writeText(b64).then(() => showToast("Settings copied to clipboard!"));
 }
 
@@ -589,7 +580,6 @@ function importFromClipboard() {
 
 // Helpers called from HTML directly
 function toggleCard(header) {
-    // Basic collapse logic
     var body = header.nextElementSibling;
     if (body.style.display === "none") {
         body.style.display = "block";

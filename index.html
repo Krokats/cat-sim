@@ -210,7 +210,6 @@
                                                     <label class="custom-checkbox"><input type="checkbox" id="buff_onyxia"><span class="checkmark"></span> Onyxia / Nefarian</label>
                                                     <label class="custom-checkbox"><input type="checkbox" id="buff_zandalar"><span class="checkmark"></span> Spirit of Zandalar</label>
                                                     <label class="custom-checkbox"><input type="checkbox" id="buff_songflower"><span class="checkmark"></span> Songflower Serenade</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_dm_north"><span class="checkmark"></span> DM North (AP)</label>
                                                 </div>
 
                                                 <div class="gear-section-title">Consumables</div>
@@ -293,6 +292,7 @@
                                                 <h2>🌿 Talente</h2>
                                             </div>
                                             <div class="card-body">
+                                                <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Only optional talents listed. Others assumed constant (e.g., Open Wounds 3/3).</p>
                                                 <div class="input-group-small">
                                                     <label>Ferocity (0-5)</label>
                                                     <input type="number" id="tal_ferocity" value="5" min="0" max="5">
@@ -306,17 +306,10 @@
                                                     <input type="number" id="tal_imp_shred" value="2" min="0" max="2">
                                                 </div>
                                                 <div class="input-group-small">
-                                                    <label>Furor (0-5)</label>
-                                                    <input type="number" id="tal_furor" value="5" min="0" max="5">
-                                                </div>
-                                                <div class="input-group-small">
                                                     <label>Nat. Shapeshifter (0-3)</label>
                                                     <input type="number" id="tal_nat_shapeshifter" value="3" min="0" max="3">
                                                 </div>
-                                                <div class="input-group-small" style="border-top:1px solid #333; padding-top:10px; margin-top:10px;">
-                                                    <label style="color:var(--druid-orange)">Berserk (0-1)</label>
-                                                    <input type="number" id="tal_berserk" value="1" min="0" max="1">
-                                                </div>
+                                                <input type="hidden" id="tal_berserk" value="1">
                                             </div>
                                         </div>
 
@@ -345,22 +338,53 @@
                                             </div>
                                         </div>
 
-                                        <div class="card">
+                                        <div class="card full-width">
                                             <div class="card-header">
-                                                <h2>🔄 Rotation</h2>
+                                                <h2>🔄 Rotation Priority</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Positioning</label>
-                                                    <div class="select-wrapper"><select id="rota_position">
+                                                <div class="input-group" style="margin-bottom:20px;">
+                                                    <label>Positioning</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="rota_position">
                                                             <option value="back">Behind (Shred)</option>
                                                             <option value="front">Front (Claw)</option>
-                                                        </select></div>
+                                                        </select>
+                                                    </div>
                                                 </div>
+
+                                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; background:#252525; padding:8px; border-radius:6px;">
+                                                    <label class="toggle" style="margin:0;"><input type="checkbox" id="use_rip" checked><span class="slider"></span><span class="label-text" style="color:var(--druid-orange)">Use Rip</span></label>
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <label style="font-size:0.85rem; color:#aaa;">Min CP:</label>
+                                                        <input type="number" id="rip_cp" value="5" min="1" max="5" style="width:60px; padding:4px;">
+                                                    </div>
+                                                </div>
+
+                                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; background:#252525; padding:8px; border-radius:6px;">
+                                                    <label class="toggle" style="margin:0;"><input type="checkbox" id="use_fb" checked><span class="slider"></span><span class="label-text" style="color:var(--druid-orange)">Use Bite</span></label>
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <label style="font-size:0.85rem; color:#aaa;">Min Energy:</label>
+                                                        <input type="number" id="fb_energy" value="35" min="35" max="100" style="width:60px; padding:4px;">
+                                                    </div>
+                                                </div>
+
+                                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; background:#252525; padding:8px; border-radius:6px;">
+                                                    <label class="toggle" style="margin:0;"><input type="checkbox" id="use_reshift" checked><span class="slider"></span><span class="label-text" style="color:var(--druid-orange)">Powershift</span></label>
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <label style="font-size:0.85rem; color:#aaa;">Max Energy:</label>
+                                                        <input type="number" id="reshift_energy" value="10" min="0" max="100" style="width:60px; padding:4px;">
+                                                    </div>
+                                                </div>
+
+                                                <div class="separator"></div>
+
                                                 <div class="toggle-grid">
-                                                    <label class="toggle"><input type="checkbox" id="rota_powershift" checked><span class="slider"></span><span class="label-text">Powershift</span></label>
-                                                    <label class="toggle"><input type="checkbox" id="rota_aggressive_shift"><span class="slider"></span><span class="label-text">Aggressive Shift</span></label>
-                                                    <label class="toggle"><input type="checkbox" id="rota_rake" checked><span class="slider"></span><span class="label-text">Maintain Rake</span></label>
-                                                    <label class="toggle"><input type="checkbox" id="rota_bite" checked><span class="slider"></span><span class="label-text">Bite @ 5CP</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="use_tf" checked><span class="slider"></span><span class="label-text">Tiger's Fury</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="use_rake" checked><span class="slider"></span><span class="label-text">Use Rake</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="use_shred" checked><span class="slider"></span><span class="label-text">Use Shred</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="use_claw"><span class="slider"></span><span class="label-text">Use Claw</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="use_ff" checked><span class="slider"></span><span class="label-text">Faerie Fire</span></label>
                                                 </div>
                                             </div>
                                         </div>
@@ -387,7 +411,7 @@
 
                         <div class="action-area-wrapper" style="display:flex; flex-direction:column; align-items:center; gap:10px; margin: 20px 0;">
                             <div class="button-row" style="display:flex; gap:15px;">
-                                <button id="btnRun" onclick="runSimulation()" class="primary-btn"><span class="btn-icon">⚡</span> Run Simulation</button>
+                                <button id="btnRun" class="primary-btn"><span class="btn-icon">⚡</span> Run Simulation</button>
                                 <button id="btnWeights" class="blue-btn" title="Coming soon"><span class="btn-icon">⚖️</span> Stat Weights</button>
                             </div>
                         </div>
