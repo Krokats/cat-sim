@@ -1,7 +1,6 @@
 /**
  * Feral Simulation - File 2: Utilities
- * Helper functions for DOM manipulation and UI feedback.
- * Updated for Turtle WoW Patch 1.18 (Feral Cat)
+ * DOM Helpers and UI Feedback
  */
 
 // ============================================================================
@@ -9,43 +8,27 @@
 // ============================================================================
 
 /**
- * Retrieves the value of a UI element safely.
- * Handles Checkboxes (returns 1 or 0), Selects (returns string), and Inputs (returns float).
- * @param {string} id - The HTML element ID.
- * @returns {number|string} - The parsed value.
+ * Retreives the value of a UI element safely.
+ * Handles Checkboxes (1/0), Selects (String), and Inputs (Float).
  */
 function getVal(id) {
     var el = document.getElementById(id);
     if (!el) return 0;
-    
-    if (el.type === "checkbox") {
-        return el.checked ? 1 : 0;
-    }
-    
-    if (el.tagName === "SELECT") {
-        return el.value;
-    }
-    
-    // For standard number/text inputs
-    var val = parseFloat(el.value);
-    return isNaN(val) ? 0 : val;
+    if (el.type === "checkbox") return el.checked ? 1 : 0;
+    if (el.tagName === "SELECT") return el.value;
+    return parseFloat(el.value) || 0;
 }
 
 /**
- * Sets the inner text of an element safely.
- * @param {string} id - The HTML element ID.
- * @param {string} text - The text content to set.
+ * Sets text content of an element safely.
  */
 function setText(id, text) {
     var el = document.getElementById(id);
-    if (el) {
-        el.innerText = text;
-    }
+    if (el) el.innerText = text;
 }
 
 /**
- * Shows a temporary 'Toast' notification at the bottom of the screen.
- * @param {string} msg - The message to display.
+ * Shows a temporary toast message at the bottom of the screen.
  */
 function showToast(msg) {
     var t = document.getElementById("toast");
@@ -53,21 +36,12 @@ function showToast(msg) {
         if (toastTimer) clearTimeout(toastTimer);
         t.innerText = msg || "Action Successful!";
         t.classList.add("show");
-        
-        // Hide after 3 seconds
-        toastTimer = setTimeout(function () { 
-            t.classList.remove("show"); 
-        }, 3000);
+        toastTimer = setTimeout(function () { t.classList.remove("show"); }, 3000);
     }
 }
 
-// ============================================================================
-// LOADING & PROGRESS OVERLAY
-// ============================================================================
-
 /**
- * Displays the full-screen progress overlay.
- * @param {string} text - The status text to show (e.g., "Simulating...").
+ * Displays the modal progress overlay with a text message.
  */
 function showProgress(text) {
     var el = document.getElementById("progressOverlay");
@@ -81,8 +55,7 @@ function showProgress(text) {
 }
 
 /**
- * Updates the progress bar percentage.
- * @param {number} pct - Percentage (0 to 100).
+ * Updates the progress bar width inside the overlay.
  */
 function updateProgress(pct) { 
     var el = document.getElementById("progressFill"); 
@@ -90,7 +63,7 @@ function updateProgress(pct) {
 }
 
 /**
- * Hides the progress overlay with a small delay for smoother UX.
+ * Hides the progress overlay with a slight delay for smooth UI.
  */
 function hideProgress() { 
     setTimeout(function () { 

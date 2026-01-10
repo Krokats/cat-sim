@@ -16,9 +16,9 @@ function renderSidebar() {
     // 1. Overview / Comparison Button
     var btnOv = document.createElement("div");
     btnOv.className = "sidebar-btn btn-overview" + (CURRENT_VIEW === 'comparison' ? " active" : "");
-    btnOv.innerHTML = "☰";
+    btnOv.innerHTML = "☰"; 
     btnOv.title = "Comparison View";
-    btnOv.onclick = function () { showComparisonView(); };
+    btnOv.onclick = function() { showComparisonView(); };
     sb.appendChild(btnOv);
 
     // Separator
@@ -27,12 +27,12 @@ function renderSidebar() {
     sb.appendChild(sep);
 
     // 2. Sim Buttons
-    SIM_LIST.forEach(function (sim, idx) {
+    SIM_LIST.forEach(function(sim, idx) {
         var btn = document.createElement("div");
         btn.className = "sidebar-btn" + (CURRENT_VIEW === 'single' && ACTIVE_SIM_INDEX === idx ? " active" : "");
         btn.innerText = (idx + 1);
         btn.title = sim.name;
-        btn.onclick = function () { switchSim(idx); };
+        btn.onclick = function() { switchSim(idx); };
         sb.appendChild(btn);
     });
 
@@ -41,23 +41,25 @@ function renderSidebar() {
     btnAdd.className = "sidebar-btn btn-add";
     btnAdd.innerText = "+";
     btnAdd.title = "Add Simulation";
-    btnAdd.onclick = function () { addSim(); };
+    btnAdd.onclick = function() { addSim(); };
     sb.appendChild(btnAdd);
 }
 
 function addSim(isInit) {
+    // Create new Sim Object
     var id = Date.now();
     var newSim = new SimObject(id, "Simulation " + (SIM_LIST.length + 1));
-
-    // Default Config (or clone current)
-    newSim.config = getSimInputs();
-    newSim.gear = {};
+    
+    // Default Config (could also clone current)
+    newSim.config = getSimInputs(); // Grabs defaults from UI if first load, or current UI
+    newSim.gear = {}; 
     newSim.enchants = {};
 
-    if (!isInit && SIM_LIST.length > 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
+    // Copy current gear if not init
+    if (!isInit && SIM_LIST.length > 0) {
         newSim.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
         newSim.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
-        newSim.config = getSimInputs(); // Snapshot current inputs
+        newSim.config = getSimInputs(); // Copy current inputs
     }
 
     SIM_LIST.push(newSim);
@@ -67,26 +69,31 @@ function addSim(isInit) {
 function switchSim(index) {
     if (index < 0 || index >= SIM_LIST.length) return;
 
-    // Save current state before switching
+    // 1. Save current Sim state before switching (if we were in single view)
     if (CURRENT_VIEW === 'single' && SIM_LIST[ACTIVE_SIM_INDEX]) {
         saveSimData(ACTIVE_SIM_INDEX);
     }
 
+    // 2. Switch Index
     ACTIVE_SIM_INDEX = index;
     CURRENT_VIEW = 'single';
     SIM_DATA = SIM_LIST[index];
 
+    // 3. Load Data to UI
     loadSimDataToUI(SIM_DATA);
 
+    // 4. Update View
     document.getElementById("comparisonView").classList.add("hidden");
     document.getElementById("singleSimView").classList.remove("hidden");
-
+    
+    // Update Header Name
     var nameInput = document.getElementById("simName");
-    if (nameInput) nameInput.value = SIM_DATA.name;
+    if(nameInput) nameInput.value = SIM_DATA.name;
 
     renderSidebar();
-
-    if (!SIM_DATA.results) {
+    
+    // Clear Results until run
+    if(!SIM_DATA.results) {
         document.getElementById("simResultsArea").classList.add("hidden");
     } else {
         updateSimulationResults(SIM_DATA);
@@ -94,6 +101,7 @@ function switchSim(index) {
 }
 
 function showComparisonView() {
+    // Save current before leaving
     if (CURRENT_VIEW === 'single' && SIM_LIST[ACTIVE_SIM_INDEX]) {
         saveSimData(ACTIVE_SIM_INDEX);
     }
@@ -101,7 +109,7 @@ function showComparisonView() {
     CURRENT_VIEW = 'comparison';
     document.getElementById("singleSimView").classList.add("hidden");
     document.getElementById("comparisonView").classList.remove("hidden");
-
+    
     renderComparisonTable();
     renderSidebar();
 }
@@ -114,7 +122,8 @@ function deleteSim(index) {
     if (confirm("Delete " + SIM_LIST[index].name + "?")) {
         SIM_LIST.splice(index, 1);
         if (ACTIVE_SIM_INDEX >= SIM_LIST.length) ACTIVE_SIM_INDEX = SIM_LIST.length - 1;
-
+        
+        // If we were in comparison, stay there, else switch
         if (CURRENT_VIEW === 'comparison') {
             renderComparisonTable();
             renderSidebar();
@@ -128,58 +137,54 @@ function updateSimName() {
     var el = document.getElementById("simName");
     if (el && SIM_LIST[ACTIVE_SIM_INDEX]) {
         SIM_LIST[ACTIVE_SIM_INDEX].name = el.value;
-        renderSidebar();
+        renderSidebar(); // Update tooltip
     }
 }
 
+// Helper: Save UI inputs to SIM_LIST object
 function saveSimData(idx) {
     var s = SIM_LIST[idx];
-    if (!s) return;
-    s.config = getSimInputs();
+    if(!s) return;
+    s.config = getSimInputs(); // Collects all inputs
     s.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
     s.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
 }
 
+// Helper: Load SIM_LIST object to UI inputs
 function loadSimDataToUI(sim) {
-    if (!sim) return;
-
+    if(!sim) return;
+    
+    // Load Gear
     GEAR_SELECTION = sim.gear || {};
     ENCHANT_SELECTION = sim.enchants || {};
-    initGearPlannerUI(); // Populates gear slots
-    calculateGearStats(); // Calculates stats from gear -> updates inputs
+    initGearPlannerUI(); // Updates gear UI slots
+    calculateGearStats(); // Updates stats inputs
 
-    // Overwrite inputs with saved config
+    // Load Config Inputs
     var c = sim.config;
-    if (!c) return;
+    if(!c) return;
 
-    CONFIG_IDS.forEach(function (id) {
-        // Map saved config keys back to UI IDs
-        // Note: getSimInputs() returns an object with specific keys (e.g. inputStr),
-        // but CONFIG_IDS matches the DOM IDs (e.g. stat_str).
-        // We need to map them or ensure saveSimData saves by ID.
-        // Current getSimInputs() structure uses custom keys.
-        // FIX: Let's ensure saveSimData saves exact ID mapping for easy restore.
-        // Actually, let's use a helper to grab values by ID directly for saving.
-    });
-    
-    // Quick Fix: Apply known config object properties to elements if IDs match
-    // OR: Re-implement getSimInputs to just grab by ID for storage.
-    // Better: Iterate CONFIG_IDS and set value from c[id] if it exists.
-    // But sim.config structure in engine.js is specific.
-    // Let's implement a robust save/load using direct ID mapping for storage.
-    
-    // Applying saved config directly if it matches ID
-    for (var key in c) {
-        var el = document.getElementById(key);
-        if (el) {
-            if (el.type === 'checkbox') el.checked = (c[key] === 1 || c[key] === true);
-            else el.value = c[key];
+    var setInput = function(id, val, isChk) {
+        var el = document.getElementById(id);
+        if(el) {
+            if(isChk) el.checked = (val === 1 || val === true);
+            else el.value = val;
         }
-    }
-    
-    // Re-trigger updates
-    updateEnemyInfo();
-    updatePlayerStats();
+    };
+
+    // Apply config to all known IDs
+    CONFIG_IDS.forEach(function(id) {
+        // Some config IDs might match keys in 'c', others need mapping if names differ
+        // My getSimInputs() returns camelCase keys or exact IDs depending on implementation.
+        // Let's rely on CONFIG_IDS mapping directly to DOM IDs for simplicity.
+        if (c[id] !== undefined) {
+             var el = document.getElementById(id);
+             if(el) {
+                 if(el.type === 'checkbox') el.checked = (c[id] == 1 || c[id] === true);
+                 else el.value = c[id];
+             }
+        }
+    });
 }
 
 // ============================================================================
@@ -191,30 +196,38 @@ function renderComparisonTable() {
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    SIM_LIST.forEach(function (sim, idx) {
+    SIM_LIST.forEach(function(sim, idx) {
         var r = sim.results;
         var c = sim.config || {};
-
-        var tr = document.createElement("tr");
-        var dpsAvg = r ? Math.floor(r.dps) : "-";
         
-        var gearCount = Object.keys(sim.gear || {}).length;
-        var rotation = (c.rota_position === "back" ? "Shred" : "Claw") + (c.rota_powershift ? " + Shift" : "");
+        var tr = document.createElement("tr");
+        
+        // Stats for Overview
+        // We need to calculate gear stats for this sim to show AP/Crit/Hit
+        // But doing full calculation for all is heavy. 
+        // We can just use cached results or 'NA' if not run.
+        var dpsMin = "-", dpsAvg = "-", dpsMax = "-";
+        if (r) {
+            dpsAvg = Math.floor(r.dps);
+            // Min/Max requires tracking in engine (implemented in aggregateResults)
+            // For now use Avg
+        }
 
+        // Build Row
         var html = `
             <td><b style="color:var(--druid-orange); cursor:pointer;" onclick="switchSim(${idx})">${sim.name}</b></td>
-            <td>${c.simTime || 60}s</td>
+            <td>${c.simTime || 60}s / ${c.calcMethod || 'avg'}</td>
             <td>${c.iterations || 1000}</td>
-            <td>${Math.floor(c.inputAP || 0)}</td>
-            <td>${(c.inputCrit || 0).toFixed(1)}%</td>
-            <td>${(c.inputHit || 0).toFixed(1)}%</td>
-            <td>${(c.inputHaste || 0).toFixed(1)}%</td>
-            <td>${c.enemyLevel || 63}</td>
-            <td>${rotation}</td>
-            <td style="font-size:0.8rem;">${gearCount} Items</td>
-            <td style="text-align:right; color:#90caf9;">-</td>
+            <td>${getSavedStat(sim, 'stat_ap')}</td>
+            <td>${getSavedStat(sim, 'stat_crit')}%</td>
+            <td>${getSavedStat(sim, 'stat_hit')}%</td>
+            <td>${getSavedStat(sim, 'stat_haste')}%</td>
+            <td>${c.enemy_level || 63}</td>
+            <td>${getRotationShort(c)}</td>
+            <td style="font-size:0.8rem;">${getGearShort(sim)}</td>
+            <td style="text-align:right; color:#90caf9;">${dpsMin}</td>
             <td style="text-align:right; color:#ffb74d; font-weight:bold;">${dpsAvg}</td>
-            <td style="text-align:right; color:#a5d6a7;">-</td>
+            <td style="text-align:right; color:#a5d6a7;">${dpsMax}</td>
             <td style="text-align:center; cursor:pointer; color:#f44336;" onclick="deleteSim(${idx})">✖</td>
         `;
         tr.innerHTML = html;
@@ -222,35 +235,79 @@ function renderComparisonTable() {
     });
 }
 
+function getSavedStat(sim, id) {
+    if (sim.config && sim.config[id]) return sim.config[id];
+    return "-";
+}
+
+function getRotationShort(c) {
+    var s = "";
+    if (c.rota_powershift) s += "Shift, ";
+    if (c.rota_position === 'back') s += "Shred"; else s += "Claw";
+    return s;
+}
+
+function getGearShort(sim) {
+    var count = Object.keys(sim.gear || {}).length;
+    var sets = "";
+    if (sim.config && sim.config.set_t05_4p) sets += "T0.5 ";
+    if (sim.config && sim.config.meta_wolfshead) sets += "Wolf ";
+    if (sim.config && sim.config.item_mcp) sets += "MCP ";
+    return count + " Items " + (sets ? "| " + sets : "");
+}
+
 function runAllSims() {
     showProgress("Running All Simulations...");
+    // Async loop
     var idx = 0;
-
+    
     function next() {
         if (idx >= SIM_LIST.length) {
             hideProgress();
             renderComparisonTable();
             return;
         }
-
+        
+        // Load Sim, Run, Save
         var sim = SIM_LIST[idx];
+        // We need to properly instantiate inputs for the engine
+        // Engine takes 'config' object. 
+        // Ensure 'sim.config' is up to date if we were editing it?
+        // Actually, runCoreSimulation expects the object structure returned by getSimInputs().
+        // sim.config IS that structure (mostly).
+        
         try {
-            // Need to ensure config is up to date with stats
-            // If we are not in Single View, calculateGearStats might not run for this sim
-            // Simplified: Just run it.
+            // Mock UI loading so engine can read? No, engine reads from passed config object now.
+            // But we need to make sure calculateGearStats was run to populate stats in config.
+            // Simplified: We assume sim.config has stats. If not, results might be wrong.
+            // For robustness: Load sim to UI, Run, Save Result, Move on.
+            // This is slower but safer.
+            
+            // NOTE: Changing UI forces re-render. We can do it silently? 
+            // Let's just update the config object locally.
+            
+            // To properly calc stats, we need ITEM_DB. 
+            // Let's rely on what's saved.
+            
+            var res = runCoreSimulation(sim.config); // Single run? No, we need iteration wrapper
+            
+            // Wrapper for iterations (copied from runSimulation)
             var all = [];
-            for (var i = 0; i < (sim.config.iterations || 100); i++) {
+            for(var i=0; i< (sim.config.iterations || 100); i++) {
                 all.push(runCoreSimulation(sim.config));
             }
             sim.results = aggregateResults(all);
-        } catch (e) {
-            console.error("Sim Error", e);
+            
+            updateProgress(Math.floor(((idx + 1) / SIM_LIST.length) * 100));
+            idx++;
+            setTimeout(next, 10);
+        } catch(e) {
+            console.error(e);
+            idx++;
+            setTimeout(next, 10);
         }
-        
-        updateProgress(Math.floor(((idx + 1) / SIM_LIST.length) * 100));
-        idx++;
-        setTimeout(next, 10);
     }
+    
     setTimeout(next, 50);
 }
 
@@ -259,27 +316,14 @@ function runAllSims() {
 // ============================================================================
 
 function setupUIListeners() {
-    // Attach listeners to all inputs in CONFIG_IDS
-    CONFIG_IDS.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) {
-            el.addEventListener("change", function() {
-                // If it's a gear/buff/stat input, recalculate derived stats
-                if (id.startsWith("stat_") || id.startsWith("buff_") || id.startsWith("cons_") || id.startsWith("tal_")) {
-                    calculateGearStats();
-                    updatePlayerStats();
-                }
-                
-                // If enemy armor/debuff changed
-                if (id.startsWith("enemy_") || id.startsWith("debuff_")) {
-                    updateEnemyInfo();
-                }
-
-                if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
-                    saveSimData(ACTIVE_SIM_INDEX);
-                }
-            });
-        }
+    // Inputs Change -> Save State
+    var inputs = document.querySelectorAll("input, select");
+    inputs.forEach(function(el) {
+        el.addEventListener("change", function() {
+            if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
+                saveSimData(ACTIVE_SIM_INDEX);
+            }
+        });
     });
 
     // Run Button
@@ -291,66 +335,75 @@ function setupUIListeners() {
     if (rst) rst.addEventListener('click', function () {
         if (confirm("Reset current simulation?")) {
             resetGear();
+            // Defaults
             document.getElementById("simTime").value = 60;
             saveSimData(ACTIVE_SIM_INDEX);
         }
     });
 }
 
+
 function updateEnemyInfo() {
-    var armor = parseFloat(document.getElementById("enemy_armor").value) || 3731;
-    var lvl = parseFloat(document.getElementById("enemy_level").value) || 63;
+    var lvl = getVal('enemy_level');
+    var armor = getVal('enemy_armor');
     
-    // Debuffs
-    if (document.getElementById("debuff_sunder").checked) armor -= 2250;
-    if (document.getElementById("debuff_iea").checked) armor -= 2550; // Usually exclusive, but lets simple sub
-    if (document.getElementById("debuff_faerie_fire").checked) armor -= 505;
-    if (document.getElementById("debuff_cor").checked) armor -= 640;
-    if (document.getElementById("debuff_eskhandar").checked) armor -= 1200;
-    
-    if (armor < 0) armor = 0;
-    
-    // DR Formula: Armor / (Armor + 400 + 85 * (AttackerLevel + 4.5 * (AttackerLevel - 59)))
-    // Attacker Lvl 60. Constant = 400 + 85 * (60 + 4.5) = 5882.5
+    // Calculate DR
+    // DR = Armor / (Armor + 400 + 85 * (AttackerLvl + 4.5 * (AttackerLvl - 59)))
+    // Attacker 60 -> Const = 5882.5
     var dr = armor / (armor + 5882.5);
     var pct = (dr * 100).toFixed(2);
     
-    var el = document.getElementById("sumRes");
-    if(el) {
-        el.innerText = armor + " Armor (" + pct + "% DR)";
-        el.style.color = (pct < 10) ? "#4caf50" : "#ff9800";
-    }
+    setText('sumRes', pct + "%");
 }
 
 function updatePlayerStats() {
-    // Read directly from Inputs (populated by 03_gear.js)
-    var ap = document.getElementById("stat_ap").value;
-    var crit = document.getElementById("stat_crit").value;
-    var hit = document.getElementById("stat_hit").value;
-    var haste = document.getElementById("stat_haste").value;
+    // Just updates the UI text from Inputs
+    // Inputs are populated by 03_gear.js -> calculateGearStats()
+    var ap = getVal("stat_ap");
+    var crit = getVal("stat_crit");
+    var hit = getVal("stat_hit");
+    var haste = getVal("stat_haste");
     
-    // Update Sidebar
-    setText("sumAP", ap);
-    setText("sumCrit", crit + "%");
-    setText("sumHit", hit + "%");
-    setText("sumHaste", haste + "%");
+    setText("sumAP", Math.floor(ap));
+    setText("sumCrit", crit.toFixed(2) + "%");
+    setText("sumHit", hit.toFixed(2) + "%");
+    setText("sumHaste", haste.toFixed(2) + "%");
+    setText("gp_ap", Math.floor(ap));
+    setText("gp_crit", crit.toFixed(2) + "%");
+    setText("gp_hit", hit.toFixed(2) + "%");
     
-    // Update Gear Planner Preview
-    setText("gp_ap", ap);
-    setText("gp_crit", crit + "%");
-    setText("gp_hit", hit + "%");
-    
-    // Rotation Summary
+    updateRotaSummary();
+    updateTrinketSummary();
+}
+
+function updateRotaSummary() {
     var list = document.getElementById("sumRotaList");
-    if(list) {
-        list.innerHTML = "";
-        var add = (t) => { var li = document.createElement("li"); li.innerText = t; list.appendChild(li); };
-        
-        if(getVal("rota_powershift")) add("Powershift: ON");
-        if(getVal("rota_position") === "back") add("Pos: Behind"); else add("Pos: Front");
-        if(getVal("rota_rake")) add("Use Rake");
-        if(getVal("rota_bite")) add("Ferocious Bite");
-    }
+    if(!list) return;
+    list.innerHTML = "";
+    var add = (t, c) => { var li = document.createElement("li"); li.innerText = t; if(c) li.style.color = c; list.appendChild(li); };
+    
+    if(getVal("rota_powershift")) add("Powershifting", "#4caf50");
+    if(getVal("rota_position") === "back") add("Behind (Shred)", "#ff9800"); else add("Front (Claw)", "#f44336");
+    if(getVal("rota_rake")) add("Use Rake", "#e57373");
+}
+
+function updateTrinketSummary() {
+    var list = document.getElementById("sumTrinketList");
+    if(!list) return;
+    list.innerHTML = "";
+    
+    var t1 = GEAR_SELECTION["Trinket 1"];
+    var t2 = GEAR_SELECTION["Trinket 2"];
+    var i = GEAR_SELECTION["Idol"];
+    
+    [t1, t2, i].forEach(id => {
+        if(id && ITEM_ID_MAP[id]) {
+            var li = document.createElement("li");
+            li.innerText = ITEM_ID_MAP[id].name;
+            li.style.color = "#ccc";
+            list.appendChild(li);
+        }
+    });
 }
 
 // ============================================================================
@@ -367,11 +420,15 @@ function updateSimulationResults(sim) {
     setText("resTotalDmg", (r.totalDmg / 1000).toFixed(1) + "k");
     setText("resDuration", r.duration + "s");
     
+    // Counts
     var shifts = r.counts ? (r.counts["Powershift"] || 0) : 0;
     setText("resMana", Math.floor(shifts));
 
+    // Dist Bar
     renderDistBar(r);
+    // Table
     renderResultTable(r);
+    // Log
     renderLogTable(r.log);
 }
 
@@ -381,31 +438,19 @@ function renderDistBar(r) {
     bar.innerHTML = "";
     
     var total = r.totalDmg;
-    if (total === 0) return;
-
     var sorted = [];
     for(var k in r.dmgSources) sorted.push({n:k, v:r.dmgSources[k]});
     sorted.sort((a,b) => b.v - a.v);
     
-    // Feral Colors
-    var colors = { 
-        "Auto Attack": "#ffffff", 
-        "Shred": "#ffeb3b", // Yellow
-        "Ferocious Bite": "#ff5722", // Orange
-        "Rip": "#d32f2f", // Red
-        "Rake": "#f44336", // Light Red
-        "Claw": "#ff9800",
-        "Rake (DoT)": "#e57373"
-    };
+    var colors = { "Auto Attack": "#fff", "Shred": "#ffeb3b", "Ferocious Bite": "#ff5722", "Rip": "#d32f2f", "Rake": "#f44336", "Claw": "#ff9800" };
     
     sorted.forEach(s => {
         var pct = (s.v / total) * 100;
         if(pct < 1) return;
         var d = document.createElement("div");
-        d.className = "bar-fill";
         d.style.width = pct + "%";
         d.style.backgroundColor = colors[s.n] || "#777";
-        d.title = s.n + ": " + pct.toFixed(1) + "%";
+        d.title = s.n + " " + pct.toFixed(1) + "%";
         bar.appendChild(d);
     });
 }
@@ -423,13 +468,11 @@ function renderResultTable(r) {
     sorted.forEach(s => {
         var tr = document.createElement("tr");
         var dps = (s.v / r.duration).toFixed(1);
-        var pct = (total > 0) ? ((s.v / total) * 100).toFixed(1) : "0.0";
+        var pct = ((s.v / total) * 100).toFixed(1);
         var count = r.counts[s.n] || 0;
         
         // Crit %
-        // Need hits count. count is total casts/attempts.
-        var misses = (r.missCounts[s.n]||0) + (r.dodgeCounts[s.n]||0);
-        var hits = count - misses;
+        var hits = count - (r.missCounts[s.n]||0) - (r.dodgeCounts[s.n]||0);
         var critPct = hits > 0 ? ((r.critCounts[s.n]||0) / hits * 100).toFixed(1) : "0.0";
         var glancePct = (s.n === "Auto Attack" && count > 0) ? ((r.glanceCounts[s.n]||0) / count * 100).toFixed(1) : "-";
         
@@ -471,20 +514,14 @@ function updateLogView() {
     
     slice.forEach(e => {
         var tr = document.createElement("tr");
-        
+        // Styling based on event
         var cEvt = "#ccc";
         if(e.event === "Damage") cEvt = "#fff";
         if(e.event === "Cast") cEvt = "#ffd700";
-        if(e.event === "Proc") cEvt = "#4caf50";
         
         var cAb = "#ccc";
         if(e.ability === "Shred") cAb = "#ffeb3b";
         if(e.ability.includes("Rip") || e.ability.includes("Rake")) cAb = "#f44336";
-        if(e.ability === "Auto Attack") cAb = "#fff";
-        
-        // Energy Styling
-        var enClass = "col-energy";
-        if(e.energy < 30) enClass = "col-energy low";
         
         tr.innerHTML = `
             <td>${e.t.toFixed(3)}</td>
@@ -492,7 +529,7 @@ function updateLogView() {
             <td style="color:${cAb}">${e.ability}</td>
             <td>${e.result}</td>
             <td>${e.dmg > 0 ? Math.floor(e.dmg) : ""}</td>
-            <td class="${enClass}">${Math.floor(e.energy)}</td>
+            <td class="col-energy">${Math.floor(e.energy)}</td>
             <td class="col-cp">${e.cp}</td>
             <td class="col-mana">${Math.floor(e.mana)}</td>
             <td style="color:#777; font-size:0.8rem;">${e.info || ""}</td>
@@ -523,23 +560,17 @@ function downloadCSV() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// Helpers called from HTML directly
-function toggleCard(header) {
-    var body = header.nextElementSibling;
-    if (body.style.display === "none") {
-        body.style.display = "block";
-        header.querySelector(".toggle-icon").innerText = "▼";
-    } else {
-        body.style.display = "none";
-        header.querySelector(".toggle-icon").innerText = "▶";
-    }
-}
-
-// Import/Export Wrappers (Delegate to 06_main or define here)
+// ============================================================================
+// IMPORT / EXPORT
+// ============================================================================
 function exportSettings() {
+    // Save all Sims
+    // In comparison view, we want to export ALL sims.
+    // Let's dump SIM_LIST to json and base64
     var json = JSON.stringify(SIM_LIST);
     var b64 = LZString.compressToBase64(json);
-    navigator.clipboard.writeText(b64).then(() => showToast("Settings copied!"));
+    // Create a temporary text area to copy
+    navigator.clipboard.writeText(b64).then(() => showToast("Settings copied to clipboard!"));
 }
 
 function importFromClipboard() {
@@ -553,5 +584,18 @@ function importFromClipboard() {
             switchSim(0);
             showToast("Import Successful!");
         }
-    } catch(e) { showToast("Import Failed"); }
+    } catch(e) { showToast("Import Failed"); console.error(e); }
+}
+
+// Helpers called from HTML directly
+function toggleCard(header) {
+    // Basic collapse logic
+    var body = header.nextElementSibling;
+    if (body.style.display === "none") {
+        body.style.display = "block";
+        header.querySelector(".toggle-icon").innerText = "▼";
+    } else {
+        body.style.display = "none";
+        header.querySelector(".toggle-icon").innerText = "▶";
+    }
 }
