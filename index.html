@@ -91,7 +91,8 @@
                                                 <th>AP</th>
                                                 <th>Crit</th>
                                                 <th>Hit</th>
-                                                <th>Target</th>
+                                                <th>Haste</th>
+                                                <th>Boss</th>
                                                 <th>Rotation</th>
                                                 <th>Gear</th>
                                                 <th style="color:#ffb74d; text-align:right;">Avg DPS</th>
@@ -117,10 +118,10 @@
                                     <div class="grid-container" style="margin:0; padding:0;">
 
                                         <div class="card">
-                                            <div class="card-header"><h2>⚙️ Sim Settings</h2></div>
+                                            <div class="card-header"><h2>⚙️ General Settings</h2></div>
                                             <div class="card-body">
                                                 <div class="input-group"><label>Duration (s)</label><input type="number" id="simTime" value="60"></div>
-                                                <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="1000"></div>
+                                                <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="2000"></div>
                                                 <div class="input-group"><label>Method</label>
                                                     <div class="select-wrapper"><select id="calcMethod">
                                                         <option value="avg">Average DPS</option>
@@ -197,7 +198,7 @@
                                                 <div class="checkbox-grid" style="margin-top:10px; border-top:1px solid #333; padding-top:10px;">
                                                     <label class="custom-checkbox"><input type="checkbox" id="tal_ooc" checked><span class="checkmark"></span> Omen of Clarity</label>
                                                     <label class="custom-checkbox"><input type="checkbox" id="tal_lotp" checked><span class="checkmark"></span> Leader of the Pack</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="tal_berserk" checked><span class="checkmark"></span> Berserk</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="tal_berserk" checked><span class="checkmark"></span> Berserk (100% Regen)</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -390,15 +391,17 @@
                             <div class="card">
                                 <div class="card-header"><h2>💀 Enemy</h2></div>
                                 <div class="card-body">
-                                    <div class="input-group"><label>Level</label>
-                                        <div class="select-wrapper"><select id="enemy_level">
-                                            <option value="60">60</option>
-                                            <option value="61">61</option>
-                                            <option value="62">62</option>
-                                            <option value="63" selected>63 (Boss)</option>
+                                    <div class="input-group"><label>Target Boss (Preset Armor)</label>
+                                        <div class="select-wrapper"><select id="enemy_level" onchange="updateEnemyInfo()">
+                                            <option value="63" data-armor="3731">Standard Boss (3731)</option>
+                                            <option value="63" data-armor="4611">Naxx: Patchwerk (4611)</option>
+                                            <option value="63" data-armor="4752">Kara: Krull (4752)</option>
+                                            <option value="63" data-armor="4211">Onyxia/BWL (4211)</option>
+                                            <option value="63" data-armor="5980">WB: Ostarius (5980)</option>
+                                            <option value="60" data-armor="3000">Target Dummy (3000)</option>
                                         </select></div>
                                     </div>
-                                    <div class="input-group"><label>Armor</label><input type="number" id="enemy_armor" value="3731"></div>
+                                    <div class="input-group"><label>Custom Armor</label><input type="number" id="enemy_armor" value="3731"></div>
                                     <div class="toggle-wrapper" style="margin-top:10px;">
                                         <label class="toggle"><input type="checkbox" id="enemy_can_bleed" checked><span class="slider"></span> Can Bleed</label>
                                     </div>
@@ -418,7 +421,7 @@
                             </div>
 
                             <div class="card">
-                                <div class="card-header"><h2>🔄 Rotation Logic</h2></div>
+                                <div class="card-header"><h2>🔄 Rotation</h2></div>
                                 <div class="card-body">
                                     <div class="input-group"><label>Position</label>
                                         <div class="select-wrapper"><select id="rota_position">
@@ -480,6 +483,25 @@
     <script src="js/04_ui.js"></script>
     <script src="js/05_engine.js"></script>
     <script src="js/06_main.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var bossSel = document.getElementById('enemy_level');
+            var armorInp = document.getElementById('enemy_armor');
+            if(bossSel && armorInp) {
+                bossSel.addEventListener('change', function() {
+                    var opt = bossSel.options[bossSel.selectedIndex];
+                    var armor = opt.getAttribute('data-armor');
+                    if(armor) {
+                        armorInp.value = armor;
+                        // Trigger update
+                        var event = new Event('change');
+                        armorInp.dispatchEvent(event);
+                    }
+                });
+            }
+        });
+    </script>
 
 </body>
 </html>
