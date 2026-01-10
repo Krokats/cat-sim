@@ -1,7 +1,6 @@
 /**
  * Feral Simulation - File 3: Gear Planner Logic & Database
  * Updated for Turtle WoW 1.18 (Feral Cat)
- * Fixed: Weapon Skills (Mace/Polearm) ignored for Feral. Only 'Feral Combat' counts.
  */
 
 var ITEM_ID_MAP = {}; // Performance cache for lookups
@@ -29,8 +28,9 @@ async function loadDatabase() {
         updateProgress(60);
 
         ITEM_DB = items.filter(i => {
-            // FIX: Some JSONs use 'level', some 'itemLevel'
+            // Fix inconsistencies in JSON properties
             i.itemLevel = i.level || i.itemLevel || 0;
+            
             // Filter Junk
             if ((i.quality || 0) < 2) return false;
             if (i.itemLevel < 35 && i.slot !== "Relic" && i.slot !== "Idol" && i.slot !== "Trinket") return false;
@@ -43,14 +43,15 @@ async function loadDatabase() {
 
             // STAT FILTER
             var interesting = false;
-            // Known IDs (Wolfshead, MCP, etc)
+            // Known IDs (Wolfshead, MCP, Badge of the Swarmguard)
             if (i.id === 8345 || i.id === 9449 || i.id === 23207) interesting = true;
             
-            // Stats check
+            // Basic Feral Stats
             if (i.agility > 0 || i.strength > 0) interesting = true;
             if (i.effects) {
                 if (i.effects.attackPower > 0 || i.effects.feralAttackPower > 0 || i.effects.crit > 0 || i.effects.hit > 0) interesting = true;
-                // Custom Text Check for "Cat", "Feral", "Attack Power", "Feral Combat"
+                
+                // Custom Text Check for Turtle WoW specifics ("Feral Attack Power", etc.)
                 if (i.effects.custom && Array.isArray(i.effects.custom)) {
                     var customStr = i.effects.custom.join(" ");
                     if (customStr.includes("Attack Power") || customStr.includes("Cat") || customStr.includes("Feral")) interesting = true;
@@ -366,7 +367,8 @@ function selectItem(itemId) {
     }
     closeItemModal();
     initGearPlannerUI();
-    saveCurrentState(); 
+    // Assuming save function exists in global context or UI logic
+    if(typeof saveCurrentState === 'function') saveCurrentState(); 
 }
 
 // --- ENCHANT MODAL ---
@@ -427,7 +429,7 @@ function selectEnchant(enchId) {
     }
     closeEnchantModal();
     initGearPlannerUI();
-    saveCurrentState(); 
+    if(typeof saveCurrentState === 'function') saveCurrentState(); 
 }
 
 function resetGear() { GEAR_SELECTION = {}; ENCHANT_SELECTION = {}; initGearPlannerUI(); }
@@ -506,8 +508,11 @@ function calculateEnchantScore(ench) {
 function calculateGearStats() {
     var raceSel = document.getElementById("char_race");
     var raceName = raceSel ? raceSel.value : "Tauren";
+    
+    // BASE STATS (Level 60)
     var baseStats = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
+    // Initialize Current Stats
     var cs = {
         str: baseStats.str,
         agi: baseStats.agi,
@@ -543,12 +548,6 @@ function calculateGearStats() {
                 cs.crit += (e.crit || 0);
                 cs.hit += (e.hit || 0);
                 
-                // Track Weapon Damage if it's Main Hand (for potential Engine usage)
-                if (slot === "Main Hand") {
-                    // Engine will decide whether to use this or base paw damage
-                    // But we store it here
-                }
-
                 // CUSTOM TEXT PARSING (Turtle WoW Custom Feral Items)
                 if (e.custom && Array.isArray(e.custom)) {
                     e.custom.forEach(function(line) {
@@ -558,12 +557,6 @@ function calculateGearStats() {
                             if (line.includes("Cat") || line.includes("forms")) {
                                 cs.ap += parseInt(matchAP[1]);
                             }
-                        }
-                        // Regex for "Increased Feral Combat +5" (Turtle Specific)
-                        // IGNORE Polearms/Maces as per user instruction
-                        var matchSkill = line.match(/Equip: Increased Feral Combat \+(\d+)/i);
-                        if (matchSkill) {
-                            cs.wepSkill += parseInt(matchSkill[1]);
                         }
                     });
                 }
@@ -605,31 +598,55 @@ function calculateGearStats() {
     if (getVal("buff_winterfall")) { cs.str += 35; } 
     if (getVal("buff_food_str")) { cs.str += 20; }
     if (getVal("buff_food_agi")) { cs.agi += 20; }
+    
+    // World Buffs
     if (getVal("buff_onyxia")) { cs.crit += 5; cs.ap += 140; }
     if (getVal("buff_songflower")) { cs.str += 15; cs.agi += 15; cs.crit += 5; }
     if (getVal("buff_warchief")) { cs.haste += 15; } 
+    if (getVal("buff_dm_north")) { cs.ap += 200; }
     
+    // Raid Buffs
     if (getVal("buff_might")) { cs.ap += 222; }
     if (getVal("buff_battle_shout")) { cs.ap += 290; }
     if (getVal("buff_trueshot")) { cs.ap += 100; }
     
-    // 5. MULTIPLIERS (Kings, Zandalar)
+    // 5. MULTIPLIERS (Kings, Zandalar, Heart of the Wild)
     var statMod = 1.0;
     if (getVal("buff_bok")) statMod *= 1.1;
     if (getVal("buff_zandalar")) statMod *= 1.15;
     
-    cs.str = Math.floor(cs.str * statMod);
+    // Heart of the Wild (20% Str/Int)
+    // Applied to total strength after other buffs usually
+    var strMod = statMod * 1.20; 
+    
+    cs.str = Math.floor(cs.str * strMod);
     cs.agi = Math.floor(cs.agi * statMod);
     
     // 6. DERIVED STATS
-    // 1 Str = 2 AP, 1 Agi = 1 AP
-    cs.ap += (cs.str * 2) + (cs.agi * 1);
+    // AP = BaseAP + Agi + 2*Str + EquipAP + BuffAP
+    // Note: cs.ap currently contains only Equip+Buff AP.
+    cs.ap = baseStats.ap + cs.agi + (cs.str * 2) + cs.ap;
     
-    // 20 Agi = 1% Crit
-    var critFromAgi = cs.agi / 20.0;
-    cs.crit += critFromAgi;
+    // Predatory Strikes (Assuming Max Rank 3/3 = 10% AP)
+    // Prompt: "Increase attack power by (3/6/10)%"
+    cs.ap = Math.floor(cs.ap * 1.10);
     
-    if (getVal("buff_leader_pack")) cs.crit += 3;
+    // Crit Calculation
+    // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
+    var critFromAgi = cs.agi * 0.05;
+    cs.crit = baseStats.crit + critFromAgi + cs.crit;
+    
+    // Sharpened Claws (6%) + Leader of the Pack (3%)
+    // Assuming these are always active based on prompt "Konstant" logic, 
+    // or we check UI. Since UI has no checkbox for Sharpened Claws but assumes talents,
+    // we add it. LotP is a buff checkbox.
+    cs.crit += 6.0; // Sharpened Claws
+    if (getVal("buff_leader_pack")) cs.crit += 3.0;
+
+    // Hit Calculation
+    // Hit Rating = 0% Base.
+    // Natural Weapons = 3% Hit.
+    cs.hit += 3.0;
 
     // 7. SET BONUSES & UI FLAGS
     if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
@@ -656,8 +673,8 @@ function calculateGearStats() {
     updateInput("stat_agi", cs.agi, false);
     updateInput("stat_ap", cs.ap, false);
     updateInput("stat_crit", cs.crit, true);
-    updateInput("stat_hit", cs.hit, false);
-    updateInput("stat_haste", cs.haste, false);
+    updateInput("stat_hit", cs.hit, true);
+    updateInput("stat_haste", cs.haste, true);
     
     // Update Weapon Skill in Input
     updateInput("stat_wep_skill", cs.wepSkill, false); 
@@ -667,8 +684,7 @@ function calculateGearStats() {
     var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = cs.crit.toFixed(2) + "%";
     var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = cs.hit.toFixed(2) + "%";
     
-    // Default Feral Weapon Damage (Level 60 Paw) ~54-55 DPS?
-    // We set placeholder here, Engine will calculate.
-    updateInput("stat_wep_dmg_min", 55, false);
-    updateInput("stat_wep_dmg_max", 85, false);
+    // Default Feral Weapon Damage
+    updateInput("stat_wep_dmg_min", baseStats.minDmg, false);
+    updateInput("stat_wep_dmg_max", baseStats.maxDmg, false);
 }
