@@ -1,63 +1,8 @@
 /**
  * Feral Simulation - File 4: UI Manager
  * Updated for Turtle WoW 1.18 (Feral Cat)
- * Handles Sidebar, Multi-Sim Management, Boss Presets, and Result Rendering
+ * Handles Sidebar, Multi-Sim Management, Inputs, and Result Rendering
  */
-
-// ============================================================================
-// DATA: BOSS PRESETS & DEBUFFS
-// ============================================================================
-
-const BOSS_DB = [
-    { name: "Apprentice Training Dummy", armor: 100 },
-    { name: "Expert Training Dummy", armor: 3000 },
-    { name: "Heroic Training Dummy", armor: 4211 },
-    { name: "Kara40: Krull", armor: 4752 },
-    { name: "Kara40: Rook, Rupturan, Mephistroth", armor: 4611 },
-    { name: "Kara40: Most Bosses", armor: 4211 },
-    { name: "Kara40: Echo, Sanv Tasdal", armor: 3850 },
-    { name: "Kara40: Bishop", armor: 3402 },
-    { name: "Naxx: Loatheb, Patch, Thaddius", armor: 4611 },
-    { name: "Naxx: Most Bosses", armor: 4211 },
-    { name: "Naxx: Faerlina, Noth", armor: 3850 },
-    { name: "Naxx: Gothik, Kel'Thuzad", armor: 3402 },
-    { name: "AQ40: Most Bosses", armor: 4211 },
-    { name: "AQ40: Emperor Vek'lor", armor: 3833 },
-    { name: "AQ40: The Prophet Skeram", armor: 3402 },
-    { name: "ES: Solnius", armor: 4712 },
-    { name: "ES: Erennius", armor: 4912 },
-    { name: "BWL: All Bosses", armor: 4211 },
-    { name: "MC: Sulfuron Harbinger", armor: 4786 },
-    { name: "MC: Most Bosses", armor: 4211 },
-    { name: "MC: Gehennas, Lucifron, Shazzrah", armor: 3402 },
-    { name: "AQ20: Most Bosses", armor: 4211 },
-    { name: "AQ20: Moam", armor: 4113 },
-    { name: "AQ20: Buru the Gorger", armor: 3402 },
-    { name: "Kara10: Lord Blackwald", armor: 4325 },
-    { name: "Kara10: Howlfang, Moroes", armor: 3892 },
-    { name: "Kara10: Grizikil, Araxxna", armor: 3044 },
-    { name: "ZG: Bloodlord Mandokir", armor: 4211 },
-    { name: "ZG: High Priest Thekal", armor: 3850 },
-    { name: "ZG: Most Bosses", armor: 3402 },
-    { name: "Onyxia's Lair: Onyxia", armor: 4211 },
-    { name: "World Boss: Ostarius", armor: 5980 },
-    { name: "World Boss: Dark Reaver", armor: 4285 },
-    { name: "World Boss: Azuregos/Dragons/Kazzak", armor: 4211 },
-    { name: "World Boss: Omen", armor: 4186 },
-    { name: "World Boss: Nerubian Overseer", armor: 3761 },
-    { name: "Silithus: Lord Skwol", armor: 4061 },
-    { name: "Silithus: Prince Thunderaan", armor: 4213 },
-    { name: "Strat UD: Atiesh", armor: 3850 },
-    { name: "UBRS: Gyth", armor: 4061 },
-    { name: "UBRS: Lord Valthalak", armor: 3400 }
-];
-
-const DEBUFF_VALUES = {
-    sunder: 2550, // Improved Exposed Armor (Max Value per prompt)
-    eskhandar: 1200,
-    faerie: 505,
-    cor: 640
-};
 
 // ============================================================================
 // SIDEBAR & SIMULATION MANAGEMENT
@@ -105,8 +50,8 @@ function addSim(isInit) {
     var id = Date.now();
     var newSim = new SimObject(id, "Simulation " + (SIM_LIST.length + 1));
     
-    // Default Config
-    newSim.config = getSimInputs(); 
+    // Default Config (could also clone current)
+    newSim.config = getSimInputs(); // Grabs defaults from UI if first load, or current UI
     newSim.gear = {}; 
     newSim.enchants = {};
 
@@ -114,7 +59,7 @@ function addSim(isInit) {
     if (!isInit && SIM_LIST.length > 0) {
         newSim.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
         newSim.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
-        newSim.config = getSimInputs();
+        newSim.config = getSimInputs(); // Copy current inputs
     }
 
     SIM_LIST.push(newSim);
@@ -124,29 +69,30 @@ function addSim(isInit) {
 function switchSim(index) {
     if (index < 0 || index >= SIM_LIST.length) return;
 
-    // Save current Sim state
+    // 1. Save current Sim state before switching (if we were in single view)
     if (CURRENT_VIEW === 'single' && SIM_LIST[ACTIVE_SIM_INDEX]) {
         saveSimData(ACTIVE_SIM_INDEX);
     }
 
-    // Switch Index
+    // 2. Switch Index
     ACTIVE_SIM_INDEX = index;
     CURRENT_VIEW = 'single';
     SIM_DATA = SIM_LIST[index];
 
-    // Load Data to UI
+    // 3. Load Data to UI
     loadSimDataToUI(SIM_DATA);
 
-    // Update View
+    // 4. Update View
     document.getElementById("comparisonView").classList.add("hidden");
     document.getElementById("singleSimView").classList.remove("hidden");
     
+    // Update Header Name
     var nameInput = document.getElementById("simName");
     if(nameInput) nameInput.value = SIM_DATA.name;
 
     renderSidebar();
     
-    // Results
+    // Clear Results until run
     if(!SIM_DATA.results) {
         document.getElementById("simResultsArea").classList.add("hidden");
     } else {
@@ -155,6 +101,7 @@ function switchSim(index) {
 }
 
 function showComparisonView() {
+    // Save current before leaving
     if (CURRENT_VIEW === 'single' && SIM_LIST[ACTIVE_SIM_INDEX]) {
         saveSimData(ACTIVE_SIM_INDEX);
     }
@@ -176,6 +123,7 @@ function deleteSim(index) {
         SIM_LIST.splice(index, 1);
         if (ACTIVE_SIM_INDEX >= SIM_LIST.length) ACTIVE_SIM_INDEX = SIM_LIST.length - 1;
         
+        // If we were in comparison, stay there, else switch
         if (CURRENT_VIEW === 'comparison') {
             renderComparisonTable();
             renderSidebar();
@@ -189,7 +137,7 @@ function updateSimName() {
     var el = document.getElementById("simName");
     if (el && SIM_LIST[ACTIVE_SIM_INDEX]) {
         SIM_LIST[ACTIVE_SIM_INDEX].name = el.value;
-        renderSidebar(); 
+        renderSidebar(); // Update tooltip
     }
 }
 
@@ -197,7 +145,7 @@ function updateSimName() {
 function saveSimData(idx) {
     var s = SIM_LIST[idx];
     if(!s) return;
-    s.config = getSimInputs();
+    s.config = getSimInputs(); // Collects all inputs
     s.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
     s.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
 }
@@ -206,26 +154,161 @@ function saveSimData(idx) {
 function loadSimDataToUI(sim) {
     if(!sim) return;
     
+    // Load Gear
     GEAR_SELECTION = sim.gear || {};
     ENCHANT_SELECTION = sim.enchants || {};
-    initGearPlannerUI();
-    
-    // Ensure stats are re-calculated for the UI fields
-    calculateGearStats();
+    initGearPlannerUI(); // Updates gear UI slots
+    calculateGearStats(); // Updates stats inputs
 
+    // Load Config Inputs
     var c = sim.config;
     if(!c) return;
 
-    CONFIG_IDS.forEach(function(id) {
+    var setInput = function(id, val, isChk) {
         var el = document.getElementById(id);
-        if(el && c[id] !== undefined) {
-             if(el.type === 'checkbox') el.checked = (c[id] == 1 || c[id] === true);
-             else el.value = c[id];
+        if(el) {
+            if(isChk) el.checked = (val === 1 || val === true);
+            else el.value = val;
+        }
+    };
+
+    // Apply config to all known IDs
+    CONFIG_IDS.forEach(function(id) {
+        // Some config IDs might match keys in 'c', others need mapping if names differ
+        // My getSimInputs() returns camelCase keys or exact IDs depending on implementation.
+        // Let's rely on CONFIG_IDS mapping directly to DOM IDs for simplicity.
+        if (c[id] !== undefined) {
+             var el = document.getElementById(id);
+             if(el) {
+                 if(el.type === 'checkbox') el.checked = (c[id] == 1 || c[id] === true);
+                 else el.value = c[id];
+             }
         }
     });
+}
 
-    // Update Enemy Info based on loaded armor value
-    updateEnemyInfo();
+// ============================================================================
+// COMPARISON TABLE
+// ============================================================================
+
+function renderComparisonTable() {
+    var tbody = document.getElementById("comparisonBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    SIM_LIST.forEach(function(sim, idx) {
+        var r = sim.results;
+        var c = sim.config || {};
+        
+        var tr = document.createElement("tr");
+        
+        // Stats for Overview
+        // We need to calculate gear stats for this sim to show AP/Crit/Hit
+        // But doing full calculation for all is heavy. 
+        // We can just use cached results or 'NA' if not run.
+        var dpsMin = "-", dpsAvg = "-", dpsMax = "-";
+        if (r) {
+            dpsAvg = Math.floor(r.dps);
+            // Min/Max requires tracking in engine (implemented in aggregateResults)
+            // For now use Avg
+        }
+
+        // Build Row
+        var html = `
+            <td><b style="color:var(--druid-orange); cursor:pointer;" onclick="switchSim(${idx})">${sim.name}</b></td>
+            <td>${c.simTime || 60}s / ${c.calcMethod || 'avg'}</td>
+            <td>${c.iterations || 1000}</td>
+            <td>${getSavedStat(sim, 'stat_ap')}</td>
+            <td>${getSavedStat(sim, 'stat_crit')}%</td>
+            <td>${getSavedStat(sim, 'stat_hit')}%</td>
+            <td>${getSavedStat(sim, 'stat_haste')}%</td>
+            <td>${c.enemy_level || 63}</td>
+            <td>${getRotationShort(c)}</td>
+            <td style="font-size:0.8rem;">${getGearShort(sim)}</td>
+            <td style="text-align:right; color:#90caf9;">${dpsMin}</td>
+            <td style="text-align:right; color:#ffb74d; font-weight:bold;">${dpsAvg}</td>
+            <td style="text-align:right; color:#a5d6a7;">${dpsMax}</td>
+            <td style="text-align:center; cursor:pointer; color:#f44336;" onclick="deleteSim(${idx})">✖</td>
+        `;
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+    });
+}
+
+function getSavedStat(sim, id) {
+    if (sim.config && sim.config[id]) return sim.config[id];
+    return "-";
+}
+
+function getRotationShort(c) {
+    var s = "";
+    if (c.rota_powershift) s += "Shift, ";
+    if (c.rota_position === 'back') s += "Shred"; else s += "Claw";
+    return s;
+}
+
+function getGearShort(sim) {
+    var count = Object.keys(sim.gear || {}).length;
+    var sets = "";
+    if (sim.config && sim.config.set_t05_4p) sets += "T0.5 ";
+    if (sim.config && sim.config.meta_wolfshead) sets += "Wolf ";
+    if (sim.config && sim.config.item_mcp) sets += "MCP ";
+    return count + " Items " + (sets ? "| " + sets : "");
+}
+
+function runAllSims() {
+    showProgress("Running All Simulations...");
+    // Async loop
+    var idx = 0;
+    
+    function next() {
+        if (idx >= SIM_LIST.length) {
+            hideProgress();
+            renderComparisonTable();
+            return;
+        }
+        
+        // Load Sim, Run, Save
+        var sim = SIM_LIST[idx];
+        // We need to properly instantiate inputs for the engine
+        // Engine takes 'config' object. 
+        // Ensure 'sim.config' is up to date if we were editing it?
+        // Actually, runCoreSimulation expects the object structure returned by getSimInputs().
+        // sim.config IS that structure (mostly).
+        
+        try {
+            // Mock UI loading so engine can read? No, engine reads from passed config object now.
+            // But we need to make sure calculateGearStats was run to populate stats in config.
+            // Simplified: We assume sim.config has stats. If not, results might be wrong.
+            // For robustness: Load sim to UI, Run, Save Result, Move on.
+            // This is slower but safer.
+            
+            // NOTE: Changing UI forces re-render. We can do it silently? 
+            // Let's just update the config object locally.
+            
+            // To properly calc stats, we need ITEM_DB. 
+            // Let's rely on what's saved.
+            
+            var res = runCoreSimulation(sim.config); // Single run? No, we need iteration wrapper
+            
+            // Wrapper for iterations (copied from runSimulation)
+            var all = [];
+            for(var i=0; i< (sim.config.iterations || 100); i++) {
+                all.push(runCoreSimulation(sim.config));
+            }
+            sim.results = aggregateResults(all);
+            
+            updateProgress(Math.floor(((idx + 1) / SIM_LIST.length) * 100));
+            idx++;
+            setTimeout(next, 10);
+        } catch(e) {
+            console.error(e);
+            idx++;
+            setTimeout(next, 10);
+        }
+    }
+    
+    setTimeout(next, 50);
 }
 
 // ============================================================================
@@ -233,20 +316,7 @@ function loadSimDataToUI(sim) {
 // ============================================================================
 
 function setupUIListeners() {
-    // 1. Populate Boss List
-    var bossSel = document.getElementById("boss_preset");
-    if (bossSel) {
-        bossSel.innerHTML = "";
-        BOSS_DB.forEach(function(b) {
-            var opt = document.createElement("option");
-            opt.value = b.name;
-            opt.innerText = b.name + " (" + b.armor + ")";
-            if (b.name === "Heroic Training Dummy") opt.selected = true;
-            bossSel.appendChild(opt);
-        });
-    }
-
-    // 2. Inputs Change -> Save State
+    // Inputs Change -> Save State
     var inputs = document.querySelectorAll("input, select");
     inputs.forEach(function(el) {
         el.addEventListener("change", function() {
@@ -255,41 +325,40 @@ function setupUIListeners() {
             }
         });
     });
+
+    // Run Button
+    var btn = document.getElementById('runSimBtn');
+    if (btn) btn.addEventListener('click', runSimulation);
+
+    // Reset Button
+    var rst = document.getElementById('resetBtn');
+    if (rst) rst.addEventListener('click', function () {
+        if (confirm("Reset current simulation?")) {
+            resetGear();
+            // Defaults
+            document.getElementById("simTime").value = 60;
+            saveSimData(ACTIVE_SIM_INDEX);
+        }
+    });
 }
 
-function applyBossPreset() {
-    var name = document.getElementById("boss_preset").value;
-    var boss = BOSS_DB.find(b => b.name === name);
-    if(boss) {
-        document.getElementById("enemy_armor").value = boss.armor;
-        updateEnemyInfo();
-    }
-}
 
 function updateEnemyInfo() {
-    var baseArmor = parseFloat(document.getElementById("enemy_armor").value) || 0;
+    var lvl = getVal('enemy_level');
+    var armor = getVal('enemy_armor');
     
-    // Calculate Debuff Reduction
-    var armorReduct = 0;
-    if(getVal("debuff_sunder")) armorReduct += DEBUFF_VALUES.sunder;
-    if(getVal("debuff_faerie")) armorReduct += DEBUFF_VALUES.faerie;
-    if(getVal("debuff_cor")) armorReduct += DEBUFF_VALUES.cor;
-    if(getVal("debuff_eskhandar")) armorReduct += DEBUFF_VALUES.eskhandar;
-
-    var finalArmor = Math.max(0, baseArmor - armorReduct);
-    setText("finalArmor", finalArmor);
-
-    // DR Formula for Lvl 60 Attacker vs Boss
-    // Formula: Armor / (Armor + 400 + 85 * (AttackerLvl + 4.5 * (AttackerLvl - 59)))
-    // 60 -> 5882.5
-    var dr = finalArmor / (finalArmor + 5882.5);
+    // Calculate DR
+    // DR = Armor / (Armor + 400 + 85 * (AttackerLvl + 4.5 * (AttackerLvl - 59)))
+    // Attacker 60 -> Const = 5882.5
+    var dr = armor / (armor + 5882.5);
     var pct = (dr * 100).toFixed(2);
     
-    setText("sumRes", pct + "%");
+    setText('sumRes', pct + "%");
 }
 
 function updatePlayerStats() {
-    // UI Updates
+    // Just updates the UI text from Inputs
+    // Inputs are populated by 03_gear.js -> calculateGearStats()
     var ap = getVal("stat_ap");
     var crit = getVal("stat_crit");
     var hit = getVal("stat_hit");
@@ -315,7 +384,7 @@ function updateRotaSummary() {
     
     if(getVal("rota_powershift")) add("Powershifting", "#4caf50");
     if(getVal("rota_position") === "back") add("Behind (Shred)", "#ff9800"); else add("Front (Claw)", "#f44336");
-    if(getVal("use_rake")) add("Use Rake", "#e57373");
+    if(getVal("rota_rake")) add("Use Rake", "#e57373");
 }
 
 function updateTrinketSummary() {
@@ -338,82 +407,6 @@ function updateTrinketSummary() {
 }
 
 // ============================================================================
-// COMPARISON VIEW
-// ============================================================================
-
-function renderComparisonTable() {
-    var tbody = document.getElementById("comparisonBody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    SIM_LIST.forEach(function(sim, idx) {
-        var r = sim.results;
-        var c = sim.config || {};
-        
-        var tr = document.createElement("tr");
-        var dpsAvg = r ? Math.floor(r.dps) : "-";
-        
-        var html = `
-            <td><b style="color:var(--druid-orange); cursor:pointer;" onclick="switchSim(${idx})">${sim.name}</b></td>
-            <td>${c.simTime || 60}s</td>
-            <td>${c.iterations || 1000}</td>
-            <td>${c.inputAP || "-"}</td>
-            <td>${c.inputCrit || "-"}%</td>
-            <td>${c.inputHit || "-"}%</td>
-            <td>${c.inputHaste || "-"}%</td>
-            <td>${c.boss_preset || "Custom"}</td>
-            <td style="font-size:0.8rem;">${getGearShort(sim)}</td>
-            <td style="text-align:right; color:#90caf9;">-</td>
-            <td style="text-align:right; color:#ffb74d; font-weight:bold;">${dpsAvg}</td>
-            <td style="text-align:right; color:#a5d6a7;">-</td>
-            <td style="text-align:center; cursor:pointer; color:#f44336;" onclick="deleteSim(${idx})">✖</td>
-        `;
-        tr.innerHTML = html;
-        tbody.appendChild(tr);
-    });
-}
-
-function getGearShort(sim) {
-    var count = Object.keys(sim.gear || {}).length;
-    var sets = "";
-    if (sim.config && sim.config.hasT05) sets += "T0.5 ";
-    if (sim.config && sim.config.hasWolfshead) sets += "Wolf ";
-    if (sim.config && sim.config.hasMCP) sets += "MCP ";
-    return count + " Items " + (sets ? "| " + sets : "");
-}
-
-function runAllSims() {
-    showProgress("Running All Simulations...");
-    var idx = 0;
-    
-    function next() {
-        if (idx >= SIM_LIST.length) {
-            hideProgress();
-            renderComparisonTable();
-            return;
-        }
-        var sim = SIM_LIST[idx];
-        try {
-            // Need to ensure config has latest stats? 
-            // We assume config is saved.
-            var all = [];
-            for(var i=0; i< (sim.config.iterations || 100); i++) {
-                all.push(runCoreSimulation(sim.config));
-            }
-            sim.results = aggregateResults(all);
-            updateProgress(Math.floor(((idx + 1) / SIM_LIST.length) * 100));
-            idx++;
-            setTimeout(next, 10);
-        } catch(e) {
-            console.error(e);
-            idx++;
-            setTimeout(next, 10);
-        }
-    }
-    setTimeout(next, 50);
-}
-
-// ============================================================================
 // RESULT RENDERING
 // ============================================================================
 
@@ -427,7 +420,7 @@ function updateSimulationResults(sim) {
     setText("resTotalDmg", (r.totalDmg / 1000).toFixed(1) + "k");
     setText("resDuration", r.duration + "s");
     
-    // Shifts Count
+    // Counts
     var shifts = r.counts ? (r.counts["Powershift"] || 0) : 0;
     setText("resMana", Math.floor(shifts));
 
@@ -449,7 +442,7 @@ function renderDistBar(r) {
     for(var k in r.dmgSources) sorted.push({n:k, v:r.dmgSources[k]});
     sorted.sort((a,b) => b.v - a.v);
     
-    var colors = { "Auto": "#fff", "Shred": "#ffeb3b", "Ferocious Bite": "#ff5722", "Rip": "#d32f2f", "Rake": "#f44336", "Claw": "#ff9800" };
+    var colors = { "Auto Attack": "#fff", "Shred": "#ffeb3b", "Ferocious Bite": "#ff5722", "Rip": "#d32f2f", "Rake": "#f44336", "Claw": "#ff9800" };
     
     sorted.forEach(s => {
         var pct = (s.v / total) * 100;
@@ -478,21 +471,26 @@ function renderResultTable(r) {
         var pct = ((s.v / total) * 100).toFixed(1);
         var count = r.counts[s.n] || 0;
         
+        // Crit %
+        var hits = count - (r.missCounts[s.n]||0) - (r.dodgeCounts[s.n]||0);
+        var critPct = hits > 0 ? ((r.critCounts[s.n]||0) / hits * 100).toFixed(1) : "0.0";
+        var glancePct = (s.n === "Auto Attack" && count > 0) ? ((r.glanceCounts[s.n]||0) / count * 100).toFixed(1) : "-";
+        
         tr.innerHTML = `
             <td style="text-align:left;">${s.n}</td>
             <td>${Math.floor(s.v).toLocaleString()}</td>
             <td>${dps}</td>
             <td>${pct}%</td>
             <td>${Math.floor(count)}</td>
-            <td>-</td>
-            <td>-</td>
+            <td>${critPct}%</td>
+            <td>${glancePct}%</td>
         `;
         tb.appendChild(tr);
     });
 }
 
 // ============================================================================
-// LOG & EXPORT
+// LOG & CSV
 // ============================================================================
 
 var LOG_DATA = [];
@@ -516,15 +514,24 @@ function updateLogView() {
     
     slice.forEach(e => {
         var tr = document.createElement("tr");
+        // Styling based on event
+        var cEvt = "#ccc";
+        if(e.event === "Damage") cEvt = "#fff";
+        if(e.event === "Cast") cEvt = "#ffd700";
+        
+        var cAb = "#ccc";
+        if(e.ability === "Shred") cAb = "#ffeb3b";
+        if(e.ability.includes("Rip") || e.ability.includes("Rake")) cAb = "#f44336";
+        
         tr.innerHTML = `
-            <td>${e.t.toFixed(2)}</td>
-            <td style="color:${e.event==='Damage'?'#fff':'#ffd700'}">${e.event}</td>
-            <td>${e.ability}</td>
+            <td>${e.t.toFixed(3)}</td>
+            <td style="color:${cEvt}">${e.event}</td>
+            <td style="color:${cAb}">${e.ability}</td>
             <td>${e.result}</td>
             <td>${e.dmg > 0 ? Math.floor(e.dmg) : ""}</td>
-            <td>${Math.floor(e.energy)}</td>
-            <td>${e.cp}</td>
-            <td>${Math.floor(e.mana)}</td>
+            <td class="col-energy">${Math.floor(e.energy)}</td>
+            <td class="col-cp">${e.cp}</td>
+            <td class="col-mana">${Math.floor(e.mana)}</td>
             <td style="color:#777; font-size:0.8rem;">${e.info || ""}</td>
         `;
         tb.appendChild(tr);
@@ -533,8 +540,12 @@ function updateLogView() {
     setText("logPageLabel", LOG_PAGE + " / " + Math.ceil(LOG_DATA.length/LOG_PER_PAGE));
 }
 
-function nextLogPage() { if(LOG_PAGE * LOG_PER_PAGE < LOG_DATA.length) { LOG_PAGE++; updateLogView(); } }
-function prevLogPage() { if(LOG_PAGE > 1) { LOG_PAGE--; updateLogView(); } }
+function nextLogPage() {
+    if(LOG_PAGE * LOG_PER_PAGE < LOG_DATA.length) { LOG_PAGE++; updateLogView(); }
+}
+function prevLogPage() {
+    if(LOG_PAGE > 1) { LOG_PAGE--; updateLogView(); }
+}
 
 function downloadCSV() {
     if(!LOG_DATA || LOG_DATA.length===0) return;
@@ -549,10 +560,17 @@ function downloadCSV() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
+// ============================================================================
+// IMPORT / EXPORT
+// ============================================================================
 function exportSettings() {
+    // Save all Sims
+    // In comparison view, we want to export ALL sims.
+    // Let's dump SIM_LIST to json and base64
     var json = JSON.stringify(SIM_LIST);
     var b64 = LZString.compressToBase64(json);
-    navigator.clipboard.writeText(b64).then(() => showToast("Settings copied!"));
+    // Create a temporary text area to copy
+    navigator.clipboard.writeText(b64).then(() => showToast("Settings copied to clipboard!"));
 }
 
 function importFromClipboard() {
@@ -569,7 +587,9 @@ function importFromClipboard() {
     } catch(e) { showToast("Import Failed"); console.error(e); }
 }
 
+// Helpers called from HTML directly
 function toggleCard(header) {
+    // Basic collapse logic
     var body = header.nextElementSibling;
     if (body.style.display === "none") {
         body.style.display = "block";

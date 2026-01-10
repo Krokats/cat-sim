@@ -94,7 +94,8 @@
                                                 <th>Crit</th>
                                                 <th>Hit</th>
                                                 <th>Haste</th>
-                                                <th>Boss</th>
+                                                <th>Boss Lvl</th>
+                                                <th>Rotation</th>
                                                 <th>Gear / Sets</th>
                                                 <th style="color:#90caf9; text-align:right;">Min DPS</th>
                                                 <th style="color:#ffb74d; text-align:right;">Avg DPS</th>
@@ -305,101 +306,61 @@
                                                     <input type="number" id="tal_imp_shred" value="2" min="0" max="2">
                                                 </div>
                                                 <div class="input-group-small">
+                                                    <label>Furor (0-5)</label>
+                                                    <input type="number" id="tal_furor" value="5" min="0" max="5">
+                                                </div>
+                                                <div class="input-group-small">
                                                     <label>Nat. Shapeshifter (0-3)</label>
                                                     <input type="number" id="tal_nat_shapeshifter" value="3" min="0" max="3">
                                                 </div>
-                                                <div style="font-size:0.7em; color:#666; margin-top:10px;">
-                                                    *All other Talents are assumed Max Rank/Active (e.g., Omen, Furor, HoTW, etc.)
+                                                <div class="input-group-small" style="border-top:1px solid #333; padding-top:10px; margin-top:10px;">
+                                                    <label style="color:var(--druid-orange)">Berserk (0-1)</label>
+                                                    <input type="number" id="tal_berserk" value="1" min="0" max="1">
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="card full-width">
+                                        <div class="card">
                                             <div class="card-header">
                                                 <h2>💀 Enemy</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Target Preset</label>
-                                                    <div class="select-wrapper"><select id="boss_preset" onchange="applyBossPreset()">
+                                                <div class="input-group"><label>Target Level</label>
+                                                    <div class="select-wrapper"><select id="enemy_level">
+                                                            <option value="60">Level 60</option>
+                                                            <option value="61">Level 61</option>
+                                                            <option value="62">Level 62</option>
+                                                            <option value="63" selected>Level 63 (Boss)</option>
                                                         </select></div>
                                                 </div>
                                                 <div class="input-group"><label>Armor</label>
                                                     <input type="number" id="enemy_armor" value="3731">
                                                 </div>
-                                                <div class="gear-section-title" style="margin-top:15px;">Armor Debuffs</div>
-                                                <div class="checkbox-grid">
-                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_sunder" checked onchange="updateEnemyInfo()"><span class="checkmark"></span> Sunder Armor / IEA</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_faerie" checked onchange="updateEnemyInfo()"><span class="checkmark"></span> Faerie Fire</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_cor" checked onchange="updateEnemyInfo()"><span class="checkmark"></span> Curse of Recklessness</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_eskhandar" onchange="updateEnemyInfo()"><span class="checkmark"></span> Spirit of Eskhandar</label>
+                                                <div class="toggle-wrapper" style="margin-top:10px;">
+                                                    <label class="toggle"><input type="checkbox" id="enemy_can_bleed" checked><span class="slider"></span><span class="label-text">Can Bleed</span></label>
                                                 </div>
-
-                                                <div class="enemy-info-box" style="margin-top:15px;">
+                                                <div class="enemy-info-box">
                                                     <div class="enemy-stat-row"><span>Phys Reduction:</span> <span id="sumRes" class="enemy-stat-val">0%</span></div>
-                                                    <div class="enemy-stat-row"><span>Final Armor:</span> <span id="finalArmor" class="enemy-stat-val">0</span></div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="card full-width">
+                                        <div class="card">
                                             <div class="card-header">
-                                                <h2>🔄 Rotation Priorities</h2>
+                                                <h2>🔄 Rotation</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group" style="margin-bottom:15px;">
-                                                    <label>Positioning</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="rota_position">
-                                                            <option value="back">Behind (Enable Shred)</option>
-                                                            <option value="front">Front (Claw Only)</option>
-                                                        </select>
-                                                    </div>
+                                                <div class="input-group"><label>Positioning</label>
+                                                    <div class="select-wrapper"><select id="rota_position">
+                                                            <option value="back">Behind (Shred)</option>
+                                                            <option value="front">Front (Claw)</option>
+                                                        </select></div>
                                                 </div>
-
-                                                <div class="rota-grid">
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_ff" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Faerie Fire</span>
-                                                    </div>
-                                                    
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_rip" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Rip</span>
-                                                        <div class="rota-input"><label>CP >=</label><input type="number" id="rota_rip_cp" value="5"></div>
-                                                    </div>
-
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_fb" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Ferocious Bite</span>
-                                                        <div class="rota-input"><label>Energy ></label><input type="number" id="rota_fb_energy" value="35"></div>
-                                                    </div>
-                                                    <div style="font-size:0.7em; color:#888; margin-left:50px;">(Cast at >4 CP)</div>
-
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_reshift" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Reshift (Powershift)</span>
-                                                        <div class="rota-input"><label>Energy <</label><input type="number" id="rota_reshift_energy" value="10"></div>
-                                                    </div>
-
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_tf"><span class="slider"></span></label>
-                                                        <span class="rota-label">Tiger's Fury</span>
-                                                    </div>
-
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_rake" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Rake</span>
-                                                    </div>
-                                                    <div style="font-size:0.7em; color:#888; margin-left:50px;">(Only if Bleedable, Not Immune, Behind, No Clearcasting)</div>
-
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_shred" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Shred (if Behind)</span>
-                                                    </div>
-                                                    <div class="rota-row">
-                                                        <label class="toggle"><input type="checkbox" id="use_claw" checked><span class="slider"></span></label>
-                                                        <span class="rota-label">Claw (Filler)</span>
-                                                    </div>
+                                                <div class="toggle-grid">
+                                                    <label class="toggle"><input type="checkbox" id="rota_powershift" checked><span class="slider"></span><span class="label-text">Powershift</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="rota_aggressive_shift"><span class="slider"></span><span class="label-text">Aggressive Shift</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="rota_rake" checked><span class="slider"></span><span class="label-text">Maintain Rake</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="rota_bite" checked><span class="slider"></span><span class="label-text">Bite @ 5CP</span></label>
                                                 </div>
                                             </div>
                                         </div>

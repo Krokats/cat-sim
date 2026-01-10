@@ -12,24 +12,22 @@ function init() {
     console.log("Initializing Krokat's Feral Sim (Turtle WoW 1.18)...");
 
     // 1. Setup Listeners
-    // Initializes input change listeners and populates the Boss Preset dropdown
     setupUIListeners();
 
     // 2. Load Item Database (Async)
-    // Fetches items.json and enchants.json.
-    // Once loaded, it triggers 'initGearPlannerUI' and 'calculateGearStats'.
+    // This will trigger 'calculateGearStats' once done.
     loadDatabase();
 
     // 3. Initialize First Simulation
-    // We add a default sim so the UI isn't empty on load.
-    // Pass 'true' to indicate initialization phase (prevents trying to copy gear from non-existent sim).
+    // We add a default sim so the UI isn't empty.
+    // Pass 'true' to indicate initialization phase.
     addSim(true);
 
     // 4. Initial UI Updates
-    // Calculate initial armor reduction and stats based on default HTML values
     updateEnemyInfo();
+    updatePlayerStats();
     
-    // Render the sidebar (now that we added a sim to the list)
+    // Render the sidebar (now that we added a sim)
     renderSidebar();
 }
 
