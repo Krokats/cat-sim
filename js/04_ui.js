@@ -1,7 +1,7 @@
 /**
  * Feral Simulation - File 4: UI Manager
  * Updated for Turtle WoW 1.18 (Feral Cat)
- * Handles Sidebar, Multi-Sim Management, Inputs, and Result Rendering
+ * Handles Sidebar, Multi-Sim Management, Inputs, Result Rendering, and Extended Combat Log
  */
 
 // ============================================================================
@@ -512,6 +512,18 @@ function renderLogTable(log) {
 }
 
 function updateLogView() {
+    // Dynamic Header Update to match requested columns
+    var container = document.querySelector(".log-container table thead tr");
+    if(container) {
+        container.innerHTML = `
+            <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
+            <th>Dmg(N)</th><th>Dmg(C)</th><th>Dmg(T)</th><th>Spec</th>
+            <th>Rake(t)</th><th>Rip(t)</th><th>CP</th><th>OoC</th>
+            <th>AP</th><th>Haste</th><th>Speed</th><th>Mana</th>
+            <th>Procs</th><th>CD Rem</th><th>Info</th>
+        `;
+    }
+
     var tb = document.getElementById("logTableBody");
     if(!tb) return;
     tb.innerHTML = "";
@@ -520,9 +532,13 @@ function updateLogView() {
     var end = start + LOG_PER_PAGE;
     var slice = LOG_DATA.slice(start, end);
     
+    // Helpers for display
+    var val = (v) => v > 0 ? Math.floor(v) : "";
+    var valF = (v) => v > 0 ? v.toFixed(1) : "";
+
     slice.forEach(e => {
         var tr = document.createElement("tr");
-        // Styling based on event
+        // Colors
         var cEvt = "#ccc";
         if(e.event === "Damage") cEvt = "#fff";
         if(e.event === "Cast") cEvt = "#ffd700";
@@ -536,11 +552,21 @@ function updateLogView() {
             <td style="color:${cEvt}">${e.event}</td>
             <td style="color:${cAb}">${e.ability}</td>
             <td>${e.result}</td>
-            <td>${e.dmg > 0 ? Math.floor(e.dmg) : ""}</td>
-            <td class="col-energy">${Math.floor(e.energy)}</td>
+            <td>${val(e.dmgNorm)}</td>
+            <td style="color:#ffb74d">${val(e.dmgCrit)}</td>
+            <td style="color:#e57373">${val(e.dmgTick)}</td>
+            <td>${val(e.dmgSpec)}</td>
+            <td>${valF(e.remRake)}</td>
+            <td>${valF(e.remRip)}</td>
             <td class="col-cp">${e.cp}</td>
-            <td class="col-mana">${Math.floor(e.mana)}</td>
-            <td style="color:#777; font-size:0.8rem;">${e.info || ""}</td>
+            <td>${e.ooc}</td>
+            <td>${e.ap}</td>
+            <td>${e.haste.toFixed(1)}%</td>
+            <td>${e.speed.toFixed(2)}</td>
+            <td class="col-mana">${e.mana}</td>
+            <td style="font-size:0.75rem; color:#ffd700;">${e.procs}</td>
+            <td style="font-size:0.75rem; color:#aaa;">${e.cds}</td>
+            <td style="color:#777; font-size:0.75rem;">${e.info || ""}</td>
         `;
         tb.appendChild(tr);
     });
@@ -557,14 +583,23 @@ function prevLogPage() {
 
 function downloadCSV() {
     if(!LOG_DATA || LOG_DATA.length===0) return;
-    var csv = "Time,Event,Ability,Result,Damage,Energy,CP,Mana,Info\n";
+    
+    // Exact requested columns
+    var csv = "Time,Event,Ability,Result,Damage Normal,Damage Crit,Damage Tick,Special Damage,Remaining Time Rake,Remaining Time Rip,CP,Omen of Clarity (0/1),AP,Haste,Attack Speed,Mana,Procs,On-Use CDs,Info\n";
+    
     LOG_DATA.forEach(r => {
-        csv += `${r.t.toFixed(3)},${r.event},${r.ability},${r.result},${r.dmg},${r.energy},${r.cp},${r.mana},"${r.info||""}"\n`;
+        // Sanitize string fields to avoid CSV breaking
+        var i = (r.info||"").replace(/,/g, " ");
+        var p = (r.procs||"").replace(/,/g, " ");
+        var c = (r.cds||"").replace(/,/g, " ");
+        
+        csv += `${r.t.toFixed(3)},${r.event},${r.ability},${r.result},${r.dmgNorm},${r.dmgCrit},${r.dmgTick},${r.dmgSpec},${r.remRake.toFixed(1)},${r.remRip.toFixed(1)},${r.cp},${r.ooc},${r.ap},${r.haste.toFixed(2)},${r.speed.toFixed(2)},${r.mana},"${p}","${c}","${i}"\n`;
     });
+    
     var blob = new Blob([csv], {type:"text/csv"});
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
-    a.href = url; a.download = "feral_sim_log.csv";
+    a.href = url; a.download = "feral_sim_log_extended.csv";
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 

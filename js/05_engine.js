@@ -2,10 +2,10 @@
  * Feral Simulation - File 5: Simulation Engine & Math
  * Updated for Turtle WoW 1.18 (Feral Cat)
  * Features: 
- * - Stochastic Combat Engine
- * - Dynamic Armor Debuff Logic
- * - Windfury Totem (Extra Attack + AP Bonus)
- * - Potion of Quickness & Active Cooldowns
+ * - Fully stochastic Event-based Engine
+ * - Detailed Combat Log Snapshots (Timers, Stats, Procs)
+ * - Dynamic Armor Reduction (Static Debuffs + Dynamic Faerie Fire)
+ * - Windfury Totem (Extra Attack + AP Bonus) & Potion of Quickness
  */
 
 // ============================================================================
@@ -151,7 +151,6 @@ function runCoreSimulation(cfg) {
     var modPredatoryStrikes = 1.20;
 
     // --- ARMOR REDUCTION CALCULATOR ---
-    // Calculate static debuffs once
     var staticArmorReduct = 0;
     // Major
     if (cfg.debuff_major_armor === "sunder") staticArmorReduct += 2250;
@@ -221,28 +220,74 @@ function runCoreSimulation(cfg) {
         events.sort((a,b) => a.t - b.t); 
     }
     
-    function logAction(action, info, res, dmgVal) {
+    // Helper to calculate current Haste Multiplier for Logging
+    function getHasteMod() {
+        var h = 1.0;
+        if (cfg.inputHaste > 0) h *= (1 + cfg.inputHaste/100);
+        if (auras.mcp > t) h *= 1.5; 
+        if (auras.tigersFurySpeed > t) h *= 1.2; 
+        if (auras.potionQuickness > t) h *= 1.05; 
+        return h;
+    }
+
+    // Helper string for active CDs
+    function getActiveCDsString() {
+        var list = [];
+        if(auras.mcp > t) list.push("MCP:" + (auras.mcp - t).toFixed(1) + "s");
+        if(auras.tigersFury > t) list.push("TF:" + (auras.tigersFury - t).toFixed(1) + "s");
+        if(auras.berserk > t) list.push("Berserk:" + (auras.berserk - t).toFixed(1) + "s");
+        if(auras.potionQuickness > t) list.push("Potion:" + (auras.potionQuickness - t).toFixed(1) + "s");
+        if(auras.clearcasting > t) list.push("Omen");
+        return list.join(", ");
+    }
+
+    // Expanded Log Action
+    function logAction(action, info, res, dmgVal, isCrit, isTick) {
         if (log.length < 2500) { // Safety limit
+            var h = getHasteMod();
+            var spd = base.speed / h;
+            var dmgNorm = 0, dmgCrit = 0, dmgTick = 0, dmgSpec = 0;
+            
+            if (dmgVal > 0) {
+                if (isTick) dmgTick = dmgVal;
+                else if (isCrit) dmgCrit = dmgVal; // Any crit goes here
+                else if (action === "Auto Attack" || action === "Extra Attack") dmgNorm = dmgVal;
+                else dmgSpec = dmgVal; // Yellow non-crit
+            }
+
+            var procsStr = "";
+            if (info && (info.includes("Proc") || info.includes("Carnage"))) procsStr = info;
+            
             log.push({
                 t: t, 
                 event: (dmgVal !== undefined) ? "Damage" : "Cast", 
                 ability: action, 
                 result: res || "", 
-                dmg: dmgVal || 0,
-                energy: Math.floor(energy), 
+                dmgNorm: dmgNorm,
+                dmgCrit: dmgCrit,
+                dmgTick: dmgTick,
+                dmgSpec: dmgSpec,
+                remRake: Math.max(0, auras.rake - t),
+                remRip: Math.max(0, auras.rip - t),
                 cp: cp, 
+                ooc: (auras.clearcasting > t) ? 1 : 0,
+                ap: Math.floor(totalAP), 
+                haste: ((h - 1) * 100),
+                speed: spd,
                 mana: Math.floor(mana), 
-                info: info
+                procs: procsStr,
+                cds: getActiveCDsString(),
+                info: info || ""
             });
         }
     }
 
-    function dealDamage(source, val, type, res) {
+    function dealDamage(source, val, type, res, isCrit, isTick) {
         val = Math.floor(val);
         if(!dmgSources[source]) dmgSources[source] = 0;
         dmgSources[source] += val;
         totalDmg += val;
-        logAction(source, type, res, val);
+        logAction(source, type, res, val, isCrit, isTick);
     }
     
     function rollDamageRange(min, max) {
@@ -254,7 +299,7 @@ function runCoreSimulation(cfg) {
     if(cfg.hasMCP) {
         auras.mcp = 30.0;
         mcpCharges--;
-        logAction("MCP", "Haste +50% (Start)");
+        logAction("MCP", "Start", "Buff", 0, false, false);
     }
 
     // -----------------------------------------
@@ -280,12 +325,12 @@ function runCoreSimulation(cfg) {
             
             if (evt.type === "dot_tick") {
                 var name = evt.data.name; 
-                // Check aura
+                // Check aura expiry (DoTs stop if aura gone? Typically snapshot, but we check uptime)
                 if (auras[name] >= t - 0.01) {
                     var dmgVal = evt.data.dmg; 
-                    dealDamage(evt.data.label, dmgVal, "Bleed", "Tick");
+                    dealDamage(evt.data.label, dmgVal, "Bleed", "Tick", false, true);
                     
-                    // Ancient Brutality (2/2): Restore 5 Energy on bleed tick
+                    // Ancient Brutality
                     if (cfg.tal_ancient_brutality > 0) {
                         energy = Math.min(100, energy + 5);
                     }
@@ -311,7 +356,7 @@ function runCoreSimulation(cfg) {
             if (mcpCharges > 0 && t > cds.mcp) {
                 auras.mcp = t + 30.0;
                 mcpCharges--;
-                logAction("MCP", "Re-use", "Charges: "+mcpCharges);
+                logAction("MCP", "Re-use", "Buff", 0, false, false);
             }
         }
 
@@ -367,23 +412,23 @@ function runCoreSimulation(cfg) {
                     var dr = getDamageReduction(t, auras.ff);
                     rawDmg *= (1 - dr);
                     
-                    dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType);
+                    dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType, (hitType === "CRIT"), false);
                     
                     // Procs
                     if (cfg.tal_omen > 0 && Math.random() < 0.10) {
                         auras.clearcasting = t + 300.0; 
-                        logAction("Proc", "Clearcasting");
+                        logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                     }
                     if (cfg.hasT05_4p && Math.random() < 0.02) { 
                         energy = Math.min(100, energy + 20);
-                        logAction("Proc", "T0.5 Energy");
+                        logAction("Proc", "T0.5 Energy", "Proc", 0, false, false);
                     }
                     
                     // Windfury Totem Logic
                     // "Each hit has a 20% chance of granting the attacker 1 extra attack"
                     // Prevent recursion: Only main attacks trigger WF
                     if (cfg.buff_wf_totem && !isExtra && Math.random() < 0.20) {
-                        logAction("Proc", "Windfury");
+                        logAction("Proc", "Windfury", "Proc", 0, false, false);
                         performSwing(true); // Trigger Extra Attack immediately
                     }
                 }
@@ -397,15 +442,7 @@ function runCoreSimulation(cfg) {
             var currentSpeed = base.speed;
             
             // Haste Calc
-            var hasteMod = 1.0;
-            if (cfg.inputHaste > 0) hasteMod *= (1 + cfg.inputHaste/100);
-            if (auras.mcp > t) hasteMod *= 1.5; 
-            if (auras.tigersFurySpeed > t) hasteMod *= 1.2; 
-            if (auras.potionQuickness > t) hasteMod *= 1.05; // Potion +5%
-            
-            // Warchief's Blessing handled in Gear.js stats? 
-            // Usually Warchief adds to haste rating or is a multiplier. 
-            // In this sim, gear.js adds Warchief to "stat_haste" (15%), so it's included in inputHaste.
+            var hasteMod = getHasteMod();
             
             swingTimer = t + (currentSpeed / hasteMod);
         }
@@ -452,14 +489,14 @@ function runCoreSimulation(cfg) {
             if (cfg.consum_potion_quickness && cds.potion <= t) {
                 auras.potionQuickness = t + 30.0; // 30s duration
                 cds.potion = t + 120.0; // 2 min CD
-                logAction("Potion", "Quickness (+5% Haste)");
+                logAction("Potion", "Quickness (+5% Haste)", "Buff", 0, false, false);
             }
 
             // Berserk (Talent)
             if (cfg.tal_berserk > 0 && cds.berserk <= t) {
                 auras.berserk = t + 20.0;
                 cds.berserk = t + 360.0; // 6 min
-                logAction("Berserk", "Energy Regen +100%");
+                logAction("Berserk", "Energy Regen +100%", "Buff", 0, false, false);
             }
             
             // --- GCD PRIORITY ---
@@ -519,12 +556,12 @@ function runCoreSimulation(cfg) {
                     var newEnergy = (cfg.tal_furor * 8);
                     if (cfg.hasWolfshead) newEnergy += 20;
                     energy = Math.min(100, newEnergy);
-                    logAction("Powershift", "Energy -> " + energy);
+                    logAction("Powershift", "Energy -> " + energy, "Cast", 0, false, false);
                     gcdEnd = t + 1.5; 
                 }
                 else if (action === "Faerie Fire") {
                     auras.ff = t + 40.0;
-                    logAction("Faerie Fire", "Armor -505");
+                    logAction("Faerie Fire", "Armor -505", "Debuff", 0, false, false);
                     gcdEnd = t + 1.0;
                 }
                 else if (action === "Tiger's Fury") {
@@ -536,7 +573,7 @@ function runCoreSimulation(cfg) {
                     for(var i=1; i*3 <= dur; i++) {
                         addEvent(t + (i*3.0), "tf_energy");
                     }
-                    logAction("Tiger's Fury", "Buff Applied");
+                    logAction("Tiger's Fury", "Buff Applied", "Buff", 0, false, false);
                     gcdEnd = t + 1.0;
                 }
                 else {
@@ -552,7 +589,7 @@ function runCoreSimulation(cfg) {
                     energy -= castCost;
                     if (isOoc) {
                         auras.clearcasting = 0;
-                        logAction("Clearcasting", "Consumed");
+                        logAction("Clearcasting", "Consumed", "Fade", 0, false, false);
                     }
                     
                     var roll = Math.random() * 100;
@@ -571,7 +608,7 @@ function runCoreSimulation(cfg) {
                         if(!missCounts[action]) missCounts[action]=0;
                         if(res==="MISS") missCounts[action]++; else dodgeCounts[action]++;
                         
-                        logAction(action, "Failed", res);
+                        logAction(action, "Refund", res, 0, false, false);
                     } else {
                         // SUCCESS
                         var cpGen = 0;
@@ -646,7 +683,7 @@ function runCoreSimulation(cfg) {
                             if (Math.random() < carnageChance) {
                                 if (auras.rake > t) {
                                     auras.rake = t + 9.0;
-                                    logAction("Carnage", "Refreshed Rake");
+                                    logAction("Carnage", "Refreshed Rake", "Proc", 0, false, false);
                                 }
                                 if (auras.rip > t) {
                                     auras.rip = t; // Reset old
@@ -659,7 +696,7 @@ function runCoreSimulation(cfg) {
                                     auras.rip = t + (rTicks * 2.0);
                                     for(var i=1; i<=rTicks; i++) addEvent(t + (i*2.0), "dot_tick", { name: "rip", dmg: rDmg, label: "Rip (DoT)" });
                                     
-                                    logAction("Carnage", "Refreshed Rip");
+                                    logAction("Carnage", "Refreshed Rip", "Proc", 0, false, false);
                                 }
                                 cpGen = 1; 
                             } else {
@@ -676,7 +713,7 @@ function runCoreSimulation(cfg) {
                              abilityDmg *= (1 - dr);
                         }
                         
-                        if (abilityDmg > 0) dealDamage(action, abilityDmg, isBleed ? "Bleed" : "Physical", res);
+                        if (abilityDmg > 0) dealDamage(action, abilityDmg, isBleed ? "Bleed" : "Physical", res, (res==="CRIT"), false);
                         
                         cp += cpGen;
                         if (cp > 5) cp = 5;
@@ -684,7 +721,7 @@ function runCoreSimulation(cfg) {
                         
                         if (cfg.tal_omen > 0 && Math.random() < 0.10) {
                              auras.clearcasting = t + 300.0;
-                             logAction("Proc", "Clearcasting");
+                             logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                         }
                     }
                     
@@ -719,8 +756,7 @@ function runCoreSimulation(cfg) {
 function aggregateResults(results) {
     if (!results || results.length === 0) return {};
     var totalDPS = 0, totalDmg = 0;
-    var counts = {}, dmgSources = {};
-    var missCounts = {}, critCounts = {}, glanceCounts = {};
+    var counts = {}, dmgSources = {}, missCounts = {}, critCounts = {}, glanceCounts = {};
     
     results.forEach(r => {
         totalDPS += r.dps;
