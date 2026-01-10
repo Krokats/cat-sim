@@ -1,5 +1,4 @@
 Feral Scaling
-
 ** Base Stats (lv60) Tauren-Cat / Night Elf-Cat:**
 Strength: 70 / 62
 Agility: 55 / 65
@@ -33,15 +32,15 @@ Reshift: Shifts out and into Cat-Form (Removes "Tiger's Fury" Buff)
 Tiger's Fury: Increase damage done by 50 (adds to NormalDmg) and regenerates 10 Energy every 3 sec. for 6 sec
 Fearie Fire: Decreae Armor of target by 505 for 40 sec.
 
-** Talents **
+** Talents ** (Talente mit "#" sind Talente, welche Optional sind. Diese sollten Als Optionen in den Talenten erscheinen)
 Ferocity (#/5): Reduces Energy Cost of Claw and Rake by # Energy (max. 5) 
 Feral Aggresion (#/5): Increase the Damage of Ferocious Bite by 3%*# (max 15%) 
-Open Wounds (#/3): Increase Damage of Rip by 5%*#. Increase Damage of Claw by 10%*# for each active Bleed effect on the target.
-Sharpend Claw (#/3): Increase Critical Strike Chance by 2%*#.
+Open Wounds (3/3): Increase Damage of Rip by 15%*. Increase Damage of Claw by 30% for each active Bleed effect on the target.
+Sharpend Claw (3/3): Increase Critical Strike Chance by 6%.
 Primal Fury (2/2): Your critical strikes that add combo points add an additional combo point.
 Blood Frenzy (2/2):Increase the duration of Tiger's Fury by 12 secconds. Tiger Fury increase your attack speed by 20% for 18 sec.
 Improved Shred (#/2): Increase the damage of Shred by 5%*# and reduces its Energy cost by 6*#.
-Predatory Strikes (3/3): Increase attack power by 10%. Increase damage cause by Claw and Rake by 20%.
+Predatory Strikes (3/3): Increase attack power by (3/6/10)%. Increase damage cause by Claw and Rake by (7/14/20)%.
 Ancient Brutality (2/2): Periodic ticks of Bleed effects restore 5 Energy.
 Berserk (1/1): Increase energy regeneration rate by 100% for 20 seconds. CD: 6 min. 
 Heart of the Wild (5/5): Increase Int and Strength by 20%.
@@ -68,6 +67,9 @@ if (Target_has_no_debuff:"Fearie Fire" and FF_active) then cast "Fearie Fire" //
 
 ** Boss Armor **
 Raid	Boss	Boss Armor
+World   Apprentice Training Dummy   100
+World   Expert Training Dummy   3000
+World   Heroic Training Dummy   4211
 Kara40	Krull	4752
 Kara40	Rook, Rupturan, Mephistroth	4611
 Kara40	Most Kara40 Bossess	4211
@@ -108,9 +110,6 @@ Silithus	Prince Thunderaan	4213
 Strat UD	Atiesh	3850
 UBRS	Gyth	4061
 UBRS	Lord Valthalak	3400
--   Apprentice Training Dummy   100
--   Expert Training Dummy   3000
--   Heroic Training Dummy   4211
 
 ** Optional Boss-Debuffs for Armor Reduction **
 - Sunder Armor x5 (Rank 5): -2250 or Improved Exposed Armor: -2550
@@ -160,8 +159,66 @@ Idol of the Emeral Rot: Your finishing moves habe a 20% chance per combo point t
 Idol of Ferocity: Reduce the energy cost of Claw and Rake by 3
 Idol of Laceration: Your finishing moves have a 20% chance per combo point to cause your next Shred to refund 15 Energy.
 
+** Trinkets (On-Use Effekte) **
+
+- Badge of the Swarmguard: "Gives a chance on melee or ranged attack to apply an armor penetration effect on you for 30 sec, lowering the target's physical armor by 200 to your own attacks. The armor penetration effect can be applied up to 6 times."
+- Slayer's Crest: "Increases Attack Power by 260 for 20 sec."
+- Kiss of the Spider: "Increases your attack speed by 20% for 15 sec."
+- Jom Gabbar: "Increases attack power by 65 and an additional 65 every 2 sec. Lasts 20 sec."
+- Earthstrike: "Increases your melee and ranged attack power by 280. Effect lasts for 20 sec."
+- Molten Emberstone: "Increases your melee and ranged attack power by 200 for 20 sec."
+
+** Trinkets (Procc Effekte) **
+- Shieldrender Talisman: "Your melee attacks have a 7% chance to cause your physical attacks to ignore all armor for the next 3 sec."
+- Vial of Potent Venoms: "Your melee and ranged attacks have a chance to inject poison into the target, dealing 120 Nature damage over 12 sec. Stacks up to 12001 times."
+- Darkmoon Card: Maelstrom: "Chance to strike your melee target with lightning for 200 to 301 Nature damage."
+- Hand of Justice: "2% chance on melee hit to gain 1 extra attack."
+- Overloaded Heating Coil: "Has a 5% chance on striking the enemy for 50 to 71 Fire damage."
+
+
 ** Combat Log **
 Time, Event, Ability, Result, Damage Normal, Damage Crit, Damage Tick, Remaining Time Rake, Remaining Time Rip, CP, Omen of Clarity (0/1), AP, Haste, Mana, {proccs}, [Remaining Time of On-Use CDs), Info 
 
 
 ** Summary Modifiers **
+
+Energy Cost Claw = 45 Energy-Talent_Ferocity
+Energy Cost Rake = 40 Energy-Talent_Ferocity
+Energy Cost Shred = 60 Energy-(Talent_ImprovedShred*6)
+
+Dmg-Modifier Ferocious Bite = 1+ (Talent_FeralAggresion*3/100 )
+Dmg-Modifier Rip = 1 + (Talent_OpenWounds*5/100)
+Dmg-Modifier Claw = 1 + (Talent_OpenWounds*Number_BleedEffects*10/100) + (Talent_PredatoryStrikes[7/14/20]/100)
+Dmg-Modifier Shred = 1+ (Talent_ImprovedShred*5/100)
+Dmg-Modifier Rake = 1  + (Talent_PredatoryStrikes[7/14/20]/100)
+
+Time-Modifier Tiger's Fury = 6 + (Talent_BloodFrenzy*6)
+AttackSpeed-Modifier = 1 / (1+(Use_TigerFury/100))
+
+** Skills and Scaling **
+NormalDmg (White) = BaseDmg + (TotalAP-BaseAP)/14
+Claw: 105%*NormalDmg + 115, +1CP 
+Rake (HIT) - Dmg:  61 + 0,115*(TotalAP), +1CP (40 Energy-TalentFerocity)
+Rake (DoT) - Total Dmg (3 Ticks, 3s, 9s Total): 102 + 0,09*(TotalAP) 
+Rip (Finishing Move), DoT - (30 Energy)
+Rip - Number of Ticks: 4+CP, Alle 2 Sek.  
+Rip - Tick Damage:  47 +(CP-1)*31+Min(4;CP)/100*(AP-BaseAP)
+Ferocious Bite (Finishing Move): Causes Damage per Combo Points and converts each additional point of Energy into 0,5% extra damage, (35 Energy)
+Ferocious Bite Damage: (70+128*CP+0,07*TotalAP)*1,005^(Remaining Energy)
+Shred (Behind): 225%*NormalDmg + 180 (Behind), +1CP (60 Energy)
+Reshift: Shifts out and into Cat-Form (Removes "Tiger's Fury" Buff)
+Tiger's Fury: Increase damage done by 50 (adds to NormalDmg) and regenerates 10 Energy every 3 sec. for 6 sec
+Fearie Fire: Decreae Armor of target by 505 for 40 sec.
+
+** Talents ** (Talente mit "#" sind Talente, welche Optional sind. Diese sollten Als Optionen in den Talenten erscheinen)
+
+Predatory Strikes (3/3): Increase attack power by 10%. Increase damage cause by Claw and Rake by 20%.
+Ancient Brutality (2/2): Periodic ticks of Bleed effects restore 5 Energy.
+Berserk (1/1): Increase energy regeneration rate by 100% for 20 seconds. CD: 6 min. 
+Heart of the Wild (5/5): Increase Int and Strength by 20%.
+Carnage (2/2): Ferocious Bite has a 20% chance per combo point spent to refresh your active Rake and Rip effects and to add an additional combo point.
+Leader of the Pack (1/2): Increase cirtical chance by 3%.
+Furor (5/5): Gain 40 Energy when shapesifting into Cat Form.
+Natural Weapons (3/3): Increase damage by 10%. Increase chance to hit by 3%.
+Natural Shapeshifter (#/3): Reduce Mana cost of all shapeshifting by 10%*#.
+Omen of Clarity (1/1): 10% chance an attack (also normal white attacks) will enter a Clearcasting state. In Clearcasting state, the the cost of the next ability will be reduced by 100%.
