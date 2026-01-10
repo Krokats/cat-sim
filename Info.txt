@@ -15,6 +15,8 @@ Crit Chance: 3,65% / 3,65%
 AP: AP = BaseAP + AGI + 2* STR + EquipAP + BuffAP
 Crit: Crit = BaseCrit + 0,05*AGI + EquipCrit + BuffCrit
 Attack Speed will reduce time in between White Dmg Hits
+Attack Speed = 1/(1+[Summe-Haste]/100)
+Crit Damage = 2x Normal Damage
 
 ** Skills and Scaling **
 NormalDmg (White) = BaseDmg + (TotalAP-BaseAP)/14
@@ -128,17 +130,18 @@ UBRS	Lord Valthalak	3400
 - Leader of the Pack (+3% Crit while in Cat Form)
 - Mark of the Wild: +12 on all Stats 
 - Improved Mark of the Wild: +16 on all Stats  
-- Trueshot Aura: (1): +5% AP, (2):+55 AP
+- Trueshot Aura: +5% AP and +55 AP
 - Blessing of Kings: +10% All Stats
 - Blessing of Might: +185 AP
 - Improved Blessing of Might: +240 AP
-- Windury Totem (procc): Each hit has a 20% chance of granting the attacker 1 extra attack with 315 extra melee attack power
-- Grace of Air Totem: +77 AGI
+- Windury Totem (procc): Each hit has a 20% chance of granting the attacker 1 extra attack with 315 extra melee attack power (Alternativ to Grace of Air Totem)
+- Grace of Air Totem: +77 AGI (Alternativ to Windfury Totem)
 - Strength of Earth Totem: +77 STR
 - Battle Shout: +232 AP
 - Improved Battle Shout (+25%): +290 AP
 
-** Gear / Set-Boni (depends on Equipment) **
+** Gear / Set-Boni / Trinkets **
+** Equipment and Trinkets will be switched on depending on Gear-Planner **
 
 (Wolfshead Helm and Manual Crowd Pummeler are not relevant anymore. Wolfshead Helm is now an Enchant for Head and Crowd Pummeler Effect was reduced.)
 
@@ -161,7 +164,6 @@ Idol of Ferocity: Reduce the energy cost of Claw and Rake by 3
 Idol of Laceration: Your finishing moves have a 20% chance per combo point to cause your next Shred to refund 15 Energy.
 
 ** Trinkets (On-Use Effekte) **
-
 - Badge of the Swarmguard: "Gives a chance on melee or ranged attack to apply an armor penetration effect on you for 30 sec, lowering the target's physical armor by 200 to your own attacks. The armor penetration effect can be applied up to 6 times."
 - Slayer's Crest: "Increases Attack Power by 260 for 20 sec."
 - Kiss of the Spider: "Increases your attack speed by 20% for 15 sec."
@@ -176,8 +178,9 @@ Idol of Laceration: Your finishing moves have a 20% chance per combo point to ca
 - Hand of Justice: "2% chance on melee hit to gain 1 extra attack."
 - Overloaded Heating Coil: "Has a 5% chance on striking the enemy for 50 to 71 Fire damage."
 
+
 ** Combat Log **
-Time, Event, Ability, Result, Damage Normal, Damage Crit, Damage Tick, Special Damage, Remaining Time Rake, Remaining Time Rip, CP, Omen of Clarity (0/1), AP, Haste, Mana, {proccs}, [Remaining Time of On-Use CDs), Info 
+Time, Event, Ability, Result, Damage Normal, Damage Crit, Damage Tick, Special Damage, Remaining Time Rake, Remaining Time Rip, CP, Omen of Clarity (0/1), AP, Haste, Attack Speed, Mana, {proccs}, [Remaining Time of On-Use CDs), Info 
 
 
 ** Summary Modifiers **
@@ -204,4 +207,9 @@ AttackSpeed-Modifier = 1 / (1+ (Use_TigerFury/100) + ([T1/8p]*15/100))
 - Gear Planner: Nur Druid Items, Waffen (wie Moonkin), Idol ausblenden (über config)
 - UI: Gear Planner Auswahl mit Esc oder aus Fenster klicken schließen
 - Char Stats werden nicht richtig berechnet
+Engine:
+- Haste wird nicht richtig berechnet
+- Finishing Move entfernen nicht CP
 
+CombatLog:
+- Energy fehlt
