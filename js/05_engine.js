@@ -7,6 +7,7 @@
  * - Dynamic Armor Reduction (Stacking Debuffs)
  * - Windfury Totem & Potion of Quickness
  * - Detailed Logging including Energy
+ * - FIXED: CP Consumption on Finisher & Bleed Immunity Logic
  */
 
 // ============================================================================
@@ -332,13 +333,19 @@ function runCoreSimulation(cfg) {
             
             if (evt.type === "dot_tick") {
                 var name = evt.data.name; 
+                // Check aura expiry AND Immunity
                 if (auras[name] >= t - 0.01) {
-                    var dmgVal = evt.data.dmg; 
-                    dealDamage(evt.data.label, dmgVal, "Bleed", "Tick", false, true);
-                    
-                    // Ancient Brutality (2/2): Restore 5 Energy on bleed tick
-                    if (cfg.tal_ancient_brutality > 0) {
-                        energy = Math.min(100, energy + 5);
+                    if (cfg.canBleed) {
+                        var dmgVal = evt.data.dmg; 
+                        dealDamage(evt.data.label, dmgVal, "Bleed", "Tick", false, true);
+                        
+                        // Ancient Brutality (2/2): Restore 5 Energy on bleed tick
+                        if (cfg.tal_ancient_brutality > 0) {
+                            energy = Math.min(100, energy + 5);
+                        }
+                    } else {
+                        // Bleed active but target is immune (config changed or logic fail fallback)
+                        // Do not deal damage, do not restore energy
                     }
                 }
             }
@@ -490,8 +497,8 @@ function runCoreSimulation(cfg) {
             
             // PRIORITY LIST
             
-            // 1. Rip
-            if (!action && !targetHasRip && cp >= cfg.rip_cp && ripActive) {
+            // 1. Rip (Cannot use on Immune)
+            if (!action && !bleedImmune && !targetHasRip && cp >= cfg.rip_cp && ripActive) {
                 if (energy >= costRip) action = "Rip";
             }
             
@@ -511,7 +518,7 @@ function runCoreSimulation(cfg) {
                 if (energy >= costTF) action = "Tiger's Fury";
             }
             
-            // 5. Rake
+            // 5. Rake (Cannot use on Immune)
             if (!action && !bleedImmune && !targetHasRake && rakeActive) {
                 if (behind && !isOoc) {
                     if (energy >= costRake) action = "Rake";
@@ -654,7 +661,7 @@ function runCoreSimulation(cfg) {
                             for(var i=1; i<=ticks; i++) {
                                 addEvent(t + (i*2.0), "dot_tick", { name: "rip", dmg: tickDmg, label: "Rip (DoT)" });
                             }
-                            cpGen = 0; // Don't add
+                            cpGen = 0; // Handled below
                             cp = 0;    // CONSUME CP
                             isBleed = true; 
                         }
@@ -680,17 +687,14 @@ function runCoreSimulation(cfg) {
                                 }
                                 if (auras.rip > t) {
                                     auras.rip = t; 
-                                    var rTicks = 4 + cp; // Current CP was consumed? Prompt implies "refresh... and add". We assume refresh based on spent CP.
-                                    var cpS = Math.min(4, 5); // Treat as 5 CP refresh? Simpler: Carnage just refreshes current tick logic? No, let's refresh based on full potential.
-                                    // Actually, standard Carnage just resets duration.
-                                    // We will re-apply Rip events based on max power (5 CP) or previous? 
-                                    // Let's assume max power refresh for simplicity in Sim.
+                                    var rTicks = 4 + cp; 
+                                    var cpS = Math.min(4, cp);
                                     var rAp = (totalAP - base.baseAp);
-                                    var rDmg = 47 + (4)*31 + (4/100 * rAp); // 5CP logic
+                                    var rDmg = 47 + (cp - 1)*31 + (cpS/100 * rAp);
                                     if (cfg.tal_open_wounds > 0) rDmg *= (1 + 0.15 * cfg.tal_open_wounds);
                                     
-                                    auras.rip = t + (9 * 2.0); // 5CP = 9 ticks
-                                    for(var i=1; i<=9; i++) addEvent(t + (i*2.0), "dot_tick", { name: "rip", dmg: rDmg, label: "Rip (DoT)" });
+                                    auras.rip = t + (rTicks * 2.0);
+                                    for(var i=1; i<=rTicks; i++) addEvent(t + (i*2.0), "dot_tick", { name: "rip", dmg: rDmg, label: "Rip (DoT)" });
                                     
                                     logAction("Carnage", "Refreshed Rip", "Proc", 0, false, false);
                                 }
