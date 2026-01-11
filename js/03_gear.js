@@ -429,28 +429,26 @@ function calculateEnchantScore(ench) {
 function calculateGearStats() {
     var raceSel = document.getElementById("char_race");
     var raceName = raceSel ? raceSel.value : "Tauren";
-    var baseStats = RACE_STATS[raceName] || RACE_STATS["Tauren"];
+    var race = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
-    var cs = {
-        str: baseStats.str,
-        agi: baseStats.agi,
-        int: baseStats.int,
-        ap: baseStats.ap,
-        crit: baseStats.crit,
-        hit: 0,
-        haste: 0,
-        wepSkill: 300,
-        wepDmgMin: baseStats.minDmg,
-        wepDmgMax: baseStats.maxDmg,
-        apMod: 1.0 // For Percentage Mods
-    };
+    // 1. Calculate Hidden Base Values
+    // Nackter AP Wert im Character Screen = RACE_STATS.ap
+    // Davon kommt ein Teil aus den Basis-Attributen: Str*2 + Agi*1
+    // Der Rest ist eine "versteckte" Base AP.
+    var baseApFromStats = (race.str * 2) + (race.agi * 1);
+    var hiddenBaseAp = race.ap - baseApFromStats;
 
+    // Nackter Crit Wert = RACE_STATS.crit
+    // Davon kommt ein Teil aus Agi: Agi / 20 (0.05)
+    var baseCritFromStats = race.agi * 0.05;
+    var hiddenBaseCrit = race.crit - baseCritFromStats;
+
+    // 2. Initialize Bonus Accumulators
+    var bonus = { str: 0, agi: 0, int: 0, ap: 0, crit: 0, hit: 0, haste: 0 };
     var setCounts = {};
-    var hasWolfshead = false;
-    var hasMCP = false;
-    var hasT05_4p = false;
+    var hasWolfshead = false; var hasMCP = false; var hasT05_4p = false;
 
-    // 2. ITEMS
+    // 3. Sum Items
     for (var slot in GEAR_SELECTION) {
         var id = GEAR_SELECTION[slot];
         if (id && typeof id === 'object' && id.id) id = id.id;
@@ -458,18 +456,18 @@ function calculateGearStats() {
             var item = ITEM_ID_MAP[id];
             if (item) {
                 var e = item.effects || {};
-                cs.str += (item.strength || 0);
-                cs.agi += (item.agility || 0);
-                cs.int += (item.intellect || 0);
-                cs.ap += (e.attackPower || 0);
-                cs.ap += (e.feralAttackPower || 0);
-                cs.crit += (e.crit || 0);
-                cs.hit += (e.hit || 0);
+                bonus.str += (item.strength || 0);
+                bonus.agi += (item.agility || 0);
+                bonus.int += (item.intellect || 0);
+                bonus.ap += (e.attackPower || 0);
+                bonus.ap += (e.feralAttackPower || 0);
+                bonus.crit += (e.crit || 0);
+                bonus.hit += (e.hit || 0);
                 if (e.custom && Array.isArray(e.custom)) {
-                    e.custom.forEach(function (line) {
+                    e.custom.forEach(function(line) {
                         var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
                         if (matchAP) {
-                            if (line.includes("Cat") || line.includes("forms")) cs.ap += parseInt(matchAP[1]);
+                            if (line.includes("Cat") || line.includes("forms")) bonus.ap += parseInt(matchAP[1]);
                         }
                     });
                 }
@@ -477,145 +475,131 @@ function calculateGearStats() {
                     if (!setCounts[item.setName]) setCounts[item.setName] = 0;
                     setCounts[item.setName]++;
                 }
+                if (item.id === 8345) hasWolfshead = true;
+                if (item.id === 9449) hasMCP = true;
             }
         }
     }
 
-    // 3. ENCHANTS
+    // 4. Sum Enchants
     for (var slot in ENCHANT_SELECTION) {
         var eid = ENCHANT_SELECTION[slot];
         if (eid && eid !== 0) {
             var ench = ENCHANT_DB.find(e => e.id == eid);
             if (ench && ench.effects) {
-                cs.str += (ench.effects.strength || 0);
-                cs.agi += (ench.effects.agility || 0);
-                cs.ap += (ench.effects.attackPower || 0);
-                cs.crit += (ench.effects.crit || 0);
-                cs.hit += (ench.effects.hit || 0);
-                cs.haste += (ench.effects.haste || 0);
+                bonus.str += (ench.effects.strength || 0);
+                bonus.agi += (ench.effects.agility || 0);
+                bonus.ap += (ench.effects.attackPower || 0);
+                bonus.crit += (ench.effects.crit || 0);
+                bonus.hit += (ench.effects.hit || 0);
+                bonus.haste += (ench.effects.haste || 0);
             }
         }
     }
 
-    // 4. BUFFS & CONSUMABLES (New Logic)
-
-    // Select: Mark of the Wild
+    // 5. BUFFS & CONSUMABLES
+    // MotW
     var valMotW = getVal("buff_motw");
-    if (valMotW === "reg") { cs.str += 12; cs.agi += 12; cs.int += 12; }
-    else if (valMotW === "imp") { cs.str += 16; cs.agi += 16; cs.int += 16; }
+    if (valMotW === "reg") { bonus.str += 12; bonus.agi += 12; bonus.int += 12; }
+    else if (valMotW === "imp") { bonus.str += 16; bonus.agi += 16; bonus.int += 16; }
 
-    // Checkbox: Blessing of Kings (10%)
-    var modStats = 1.0;
-    if (getVal("buff_kings")) modStats *= 1.10;
-
-    // Checkbox: Leader of the Pack (3% Crit)
-    if (getVal("buff_lotp")) cs.crit += 3;
-
-    // Select: Blessing of Might
+    // Might & Battle Shout
     var valMight = getVal("buff_might");
-    if (valMight === "reg") cs.ap += 185;
-    else if (valMight === "imp") cs.ap += 240;
-
-    // Select: Battle Shout
+    if (valMight === "reg") bonus.ap += 185; else if (valMight === "imp") bonus.ap += 240;
     var valBS = getVal("buff_bs");
-    if (valBS === "reg") cs.ap += 232;
-    else if (valBS === "imp") cs.ap += 290;
+    if (valBS === "reg") bonus.ap += 232; else if (valBS === "imp") bonus.ap += 290;
 
     // Totems
-    if (getVal("buff_goa_totem")) cs.agi += 77;
-    if (getVal("buff_soe_totem")) cs.str += 77;
-    // Windfury Totem handled in Engine (Proc)
+    if (getVal("buff_goa_totem")) bonus.agi += 77;
+    if (getVal("buff_soe_totem")) bonus.str += 77;
 
-    // Select: Trueshot Aura
+    // Trueshot Aura (Flat or Mod)
+    var apMod = 1.0;
     var valTSA = getVal("buff_tsa");
-    if (valTSA === "reg") cs.ap += 55; // Rank 2
-    else if (valTSA === "mod") cs.apMod *= 1.05; // Rank 1 (Percent)
+    if (valTSA === "reg") bonus.ap += 55; else if (valTSA === "mod") apMod *= 1.05;
 
-    // Consumables: Elixir (Mongoose)
-    if (getVal("consum_mongoose")) { cs.agi += 25; cs.crit += 1; } // Prompt: 1% Crit
-
-    // Consumables: Weapon Buff (Select)
+    // Consumables
+    if (getVal("consum_mongoose")) { bonus.agi += 25; bonus.crit += 1; }
+    
     var valWep = getVal("consum_wep");
-    if (valWep === "elemental") { cs.crit += 2; }
+    if (valWep === "elemental") bonus.crit += 2;
     else if (valWep === "consecrated") {
-        // 100 AP vs Undead
-        var eType = getVal("enemy_type");
-        if (eType === "undead") cs.ap += 100;
+        if (getVal("enemy_type") === "undead") bonus.ap += 100;
     }
 
-    // Consumables: Blasted Lands (Select)
     var valBlast = getVal("consum_blasted");
-    if (valBlast === "scorpok") cs.agi += 25;
-    else if (valBlast === "roids") cs.str += 25;
+    if (valBlast === "scorpok") bonus.agi += 25; else if (valBlast === "roids") bonus.str += 25;
 
-    // Consumables: Jujus / Firewater (Select + Checkbox)
-    if (getVal("consum_juju_power")) cs.str += 30; // Juju Power stacks
+    if (getVal("consum_juju_power")) bonus.str += 30; 
     var valJuju = getVal("consum_juju");
-    if (valJuju === "firewater") cs.ap += 35;
-    else if (valJuju === "might") cs.ap += 40;
+    if (valJuju === "firewater") bonus.ap += 35; else if (valJuju === "might") bonus.ap += 40;
 
-    // Consumables: Food (Select)
     var valFood = getVal("consum_food");
-    if (valFood === "str") cs.str += 20;
-    else if (valFood === "agi") cs.agi += 10;
-    else if (valFood === "haste") cs.haste += 2;
+    if (valFood === "str") bonus.str += 20;
+    else if (valFood === "agi") bonus.agi += 10;
+    else if (valFood === "haste") bonus.haste += 2;
 
-    // Potion: Quickness (Active CD handled in Engine, no static stats here)
+    // Warchief's Blessing (UI ID check directly for safety)
+    var elWB = document.getElementById("buff_warchief");
+    if(elWB && elWB.checked) bonus.haste += 15;
 
-    // 5. ATTRIBUTE MULTIPLIERS (Kings + HotW)
+    // 6. APPLY STAT MULTIPLIERS
+    var statMod = 1.0;
+    if (getVal("buff_kings")) statMod *= 1.10;
     var hotwMod = 1.20; // 5/5
 
-    cs.str = Math.floor(cs.str * modStats * hotwMod);
-    cs.int = Math.floor(cs.int * modStats * hotwMod);
-    cs.agi = Math.floor(cs.agi * modStats); // No HotW for Agi
+    // Total Attributes
+    var finalStr = Math.floor((race.str + bonus.str) * statMod * hotwMod);
+    var finalInt = Math.floor((race.int + bonus.int) * statMod * hotwMod);
+    var finalAgi = Math.floor((race.agi + bonus.agi) * statMod); // No HotW for Agi
 
-    // 6. DERIVED STATS
-    // AP = BaseAP + AGI + 2*STR + EquipAP + BuffAP
-    cs.ap += (cs.str * 2) + (cs.agi * 1);
+    // 7. FINAL CALCULATIONS
+    // AP = HiddenBase + (Str*2) + (Agi*1) + BonusAP
+    var finalAP = hiddenBaseAp + (finalStr * 2) + (finalAgi * 1) + bonus.ap;
+    
+    // Predatory Strikes (3/3): +10% AP
+    apMod *= 1.10;
+    finalAP = Math.floor(finalAP * apMod);
 
-    // Predatory Strikes (3/3): +10% AP? 
-    // Wait, Predatory strikes scaling is usually Multiplicative.
-    // "Increase attack power by 10%".
-    cs.apMod *= 1.10;
+    // Crit = HiddenBase + (Agi / 20) + BonusCrit
+    var critFromAgi = finalAgi / 20.0;
+    var finalCrit = hiddenBaseCrit + critFromAgi + bonus.crit;
+    
+    // Talent/Buff Crits
+    if (getVal("buff_lotp")) finalCrit += 3.0;
+    finalCrit += 6.0; // Sharpened Claws
 
-    // Apply AP Multipliers (Predatory + TSA%)
-    cs.ap = Math.floor(cs.ap * cs.apMod);
+    // Hit
+    var finalHit = bonus.hit + 3.0; // Natural Weapons
 
-    // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
-    var critFromAgi = cs.agi * 0.05;
-    cs.crit += critFromAgi;
-
-    // Sharpened Claws (3/3)
-    cs.crit += 6.0;
-
-    // Natural Weapons (3/3) -> +3% Hit
-    cs.hit += 3.0;
-
-    // 7. SET BONUSES
-    if (setCounts["The Feralheart"] >= 4) hasT05_4p = true;
-
+    // 8. UPDATE UI
+    // Update Set checkboxes
+    if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
     var elWolf = document.getElementById("meta_wolfshead"); if (elWolf) elWolf.checked = hasWolfshead;
     var elMCP = document.getElementById("item_mcp"); if (elMCP) elMCP.checked = hasMCP;
     var elT05 = document.getElementById("set_t05_4p"); if (elT05) elT05.checked = hasT05_4p;
 
-    // 8. UPDATE UI
+    // Write to Inputs
     var isManual = document.getElementById("manual_stats") ? document.getElementById("manual_stats").checked : false;
     var updateInput = function (id, val, isPct) {
         var el = document.getElementById(id);
         if (!el) return;
-        if (isManual) { el.disabled = false; } else { el.disabled = true; el.value = isPct ? val.toFixed(2) : Math.floor(val); }
+        if (isManual) { el.disabled = false; } 
+        else { el.disabled = true; el.value = isPct ? val.toFixed(2) : Math.floor(val); }
     };
-    updateInput("stat_str", cs.str, false);
-    updateInput("stat_agi", cs.agi, false);
-    updateInput("stat_ap", cs.ap, false);
-    updateInput("stat_crit", cs.crit, true);
-    updateInput("stat_hit", cs.hit, false);
-    updateInput("stat_haste", cs.haste, false);
-    updateInput("stat_wep_skill", cs.wepSkill, false);
-    updateInput("stat_wep_dmg_min", cs.wepDmgMin, false);
-    updateInput("stat_wep_dmg_max", cs.wepDmgMax, false);
 
-    var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(cs.ap);
-    var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = cs.crit.toFixed(2) + "%";
-    var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = cs.hit.toFixed(2) + "%";
+    updateInput("stat_str", finalStr, false);
+    updateInput("stat_agi", finalAgi, false);
+    updateInput("stat_ap", finalAP, false);
+    updateInput("stat_crit", finalCrit, true);
+    updateInput("stat_hit", finalHit, false);
+    updateInput("stat_haste", bonus.haste, false);
+    updateInput("stat_wep_skill", race.wepSkill || 300, false); 
+    updateInput("stat_wep_dmg_min", race.minDmg, false);
+    updateInput("stat_wep_dmg_max", race.maxDmg, false);
+    
+    // Update Planner Preview Box
+    var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(finalAP);
+    var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = finalCrit.toFixed(2) + "%";
+    var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = finalHit.toFixed(2) + "%";
 }
