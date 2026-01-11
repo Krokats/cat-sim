@@ -206,10 +206,11 @@ AttackSpeed-Modifier = 1 / (1+ (Use_TigerFury/100) + ([T1/8p]*15/100))
 *****
 - Gear Planner: Nur Druid Items, Waffen (wie Moonkin), Idol ausblenden (über config)
 - UI: Gear Planner Auswahl mit Esc oder aus Fenster klicken schließen
-- Char Stats werden nicht richtig berechnet
 Engine:
-- Haste wird nicht richtig berechnet
 - Finishing Move entfernen nicht CP
-
+- Bug bei "Shred": Castet viel zu selten und zeigt im CombatLog keine Energy-Veränderungen
 CombatLog:
-- Energy fehlt
+- Bei einem kritischen Treffer den Schaden aufteilen in Normalen Schaden und Kritischen Schaden (=100% Normaler Schaden)
+- Damage von Abilities wie Shred oder Claw soll auch als Normaler Schaden (bzw. kritischer Schaden) registriert werden. Nur Dmg von speziellen Proccs (z.B. Chance, 150 Nature Schaden zu verursachen) sollte als spezieller Schaden gelten.
+- Enchants ergänzen!!
+

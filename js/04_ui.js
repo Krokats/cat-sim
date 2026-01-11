@@ -45,6 +45,17 @@ function renderSidebar() {
     sb.appendChild(btnAdd);
 }
 
+function saveCurrentState() {
+    if (SIM_LIST[ACTIVE_SIM_INDEX]) {
+        var isOverview = !document.getElementById('comparisonView').classList.contains('hidden');
+        if (!isOverview) {
+            SIM_LIST[ACTIVE_SIM_INDEX].config = getCurrentConfigFromUI();
+            var nameInput = document.getElementById('simName');
+            if (nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
+        }
+    }
+}
+
 function addSim(isInit) {
     // Create new Sim Object
     var id = Date.now();
