@@ -503,9 +503,9 @@ function calculateGearStats() {
     if (getVal("buff_soe_totem")) bonus.str += 77;
 
     // Trueshot Aura (Flat or Mod) //KORREKTUR FÜR SPÄTER
-    var apMod = 1.0;
+    var apMod = 0.0;
     var valTSA = getVal("buff_tsa");
-    if (valTSA === "reg") bonus.ap += 55; else if (valTSA === "mod") apMod *= 1.05;
+    if (valTSA === "reg") bonus.ap += 55; else if (valTSA === "mod") apMod += 5;
 
     // Consumables
     if (getVal("consum_mongoose")) { bonus.agi += 25; bonus.crit += 1; }
@@ -547,8 +547,8 @@ function calculateGearStats() {
     var finalAP = race.ap + (finalStr * 2) + (finalAgi * 1) + bonus.ap;
     
     // Predatory Strikes (3/3): +10% AP
-    apMod *= 1.10;
-    finalAP = Math.floor(finalAP * apMod);
+    apMod += 10;
+    finalAP = Math.floor(finalAP * (1+apMod/100));
 
     // Crit = RaceCrit(Base) + (Agi / 20) + BonusCrit
     var critFromAgi = finalAgi / 20.0;
