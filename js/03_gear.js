@@ -513,7 +513,7 @@ function calculateGearStats() {
     if (getVal("buff_goa_totem")) bonus.agi += 77;
     if (getVal("buff_soe_totem")) bonus.str += 77;
 
-    // Trueshot Aura (Flat or Mod)
+    // Trueshot Aura (Flat or Mod) //KORREKTUR FÜR SPÄTER
     var apMod = 1.0;
     var valTSA = getVal("buff_tsa");
     if (valTSA === "reg") bonus.ap += 55; else if (valTSA === "mod") apMod *= 1.05;
