@@ -207,7 +207,7 @@ function renderComparisonTable() {
         // Build Row
         var html = `
             <td><b style="color:var(--druid-orange); cursor:pointer;" onclick="switchSim(${idx})">${sim.name}</b></td>
-            <td>${c.simTime || 60}s / ${c.calcMethod || 'avg'}</td>
+            <td>${c.simTime || 60}s</td>
             <td>${c.iterations || 1000}</td>
             <td>${getSavedStat(sim, 'stat_ap')}</td>
             <td>${getSavedStat(sim, 'stat_crit')}%</td>
@@ -503,8 +503,8 @@ function renderDistBar(r) {
         "Ferocious Bite": "#ff5722", 
         "Rip": "#d32f2f", 
         "Rake": "#f44336", 
-        "Claw": "#ff9800",
-        "Rake (DoT)": "#e57373",
+        "Claw": "#ff9800", 
+        "Rake (DoT)": "#e57373", 
         "Rip (DoT)": "#b71c1c",
         "Extra Attack": "#90caf9" // Windfury
     };
@@ -569,14 +569,14 @@ function renderLogTable(log) {
 }
 
 function updateLogView() {
-    // Dynamic Headers for Extended Log
+    // Dynamic Header Update
     var container = document.querySelector(".log-container table thead tr");
     if(container) {
         container.innerHTML = `
             <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
             <th>Dmg(N)</th><th>Dmg(C)</th><th>Dmg(T)</th><th>Spec</th>
             <th>Rake(t)</th><th>Rip(t)</th><th>CP</th><th>OoC</th>
-            <th>AP</th><th>Haste</th><th>Speed</th><th>Mana</th>
+            <th>AP</th><th>Haste</th><th>Speed</th><th>Mana</th><th>Energy</th>
             <th>Procs</th><th>CD Rem</th><th>Info</th>
         `;
     }
@@ -589,13 +589,13 @@ function updateLogView() {
     var end = start + LOG_PER_PAGE;
     var slice = LOG_DATA.slice(start, end);
     
-    // Helper to hide zeroes
+    // Helpers
     var val = (v) => v > 0 ? Math.floor(v) : "";
     var valF = (v) => v > 0 ? v.toFixed(1) : "";
 
     slice.forEach(e => {
         var tr = document.createElement("tr");
-        // Styling based on event
+        // Colors
         var cEvt = "#ccc";
         if(e.event === "Damage") cEvt = "#fff";
         if(e.event === "Cast") cEvt = "#ffd700";
@@ -621,6 +621,7 @@ function updateLogView() {
             <td>${e.haste.toFixed(1)}%</td>
             <td>${e.speed.toFixed(2)}</td>
             <td class="col-mana">${e.mana}</td>
+            <td class="col-energy">${e.energy}</td>
             <td style="font-size:0.75rem; color:#ffd700;">${e.procs}</td>
             <td style="font-size:0.75rem; color:#aaa;">${e.cds}</td>
             <td style="color:#777; font-size:0.75rem;">${e.info || ""}</td>
@@ -641,15 +642,17 @@ function prevLogPage() {
 function downloadCSV() {
     if(!LOG_DATA || LOG_DATA.length===0) return;
     
-    var csv = "Time,Event,Ability,Result,Damage Normal,Damage Crit,Damage Tick,Special Damage,Remaining Time Rake,Remaining Time Rip,CP,Omen of Clarity (0/1),AP,Haste,Attack Speed,Mana,Procs,On-Use CDs,Info\n";
+    // Header containing Energy
+    var csv = "Time,Event,Ability,Result,Damage Normal,Damage Crit,Damage Tick,Special Damage,Rem Rake,Rem Rip,CP,OoC,AP,Haste,Speed,Mana,Energy,Procs,On-Use CDs,Info\n";
     
     LOG_DATA.forEach(r => {
-        // Sanitize
+        // Sanitize string fields
         var i = (r.info||"").replace(/,/g, " ");
         var p = (r.procs||"").replace(/,/g, " ");
         var c = (r.cds||"").replace(/,/g, " ");
         
-        csv += `${r.t.toFixed(3)},${r.event},${r.ability},${r.result},${r.dmgNorm},${r.dmgCrit},${r.dmgTick},${r.dmgSpec},${r.remRake.toFixed(1)},${r.remRip.toFixed(1)},${r.cp},${r.ooc},${r.ap},${r.haste.toFixed(2)},${r.speed.toFixed(2)},${r.mana},"${p}","${c}","${i}"\n`;
+        // r.energy is now present
+        csv += `${r.t.toFixed(3)},${r.event},${r.ability},${r.result},${r.dmgNorm},${r.dmgCrit},${r.dmgTick},${r.dmgSpec},${r.remRake.toFixed(1)},${r.remRip.toFixed(1)},${r.cp},${r.ooc},${r.ap},${r.haste.toFixed(2)},${r.speed.toFixed(2)},${r.mana},${r.energy},"${p}","${c}","${i}"\n`;
     });
     
     var blob = new Blob([csv], {type:"text/csv"});
@@ -663,7 +666,6 @@ function downloadCSV() {
 // IMPORT / EXPORT
 // ============================================================================
 function exportSettings() {
-    // Save all Sims
     var json = JSON.stringify(SIM_LIST);
     var b64 = LZString.compressToBase64(json);
     navigator.clipboard.writeText(b64).then(() => showToast("Settings copied to clipboard!"));

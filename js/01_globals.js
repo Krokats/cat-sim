@@ -21,7 +21,7 @@ var ENCHANT_SELECTION = {};
 // Configuration IDs mapped to UI elements
 var CONFIG_IDS = [
     // Sim Settings
-    "simTime", "simCount", "calcMethod",
+    "simTime", "simCount", // Removed calcMethod
     
     // Player Stats
     "stat_str", "stat_agi", "stat_ap", 
@@ -32,13 +32,13 @@ var CONFIG_IDS = [
     // Enemy Settings
     "enemy_level", "enemy_armor", "enemy_can_bleed",
     "enemy_type", 
-    "enemy_boss_select", // NEW: Boss Preset Dropdown
+    "enemy_boss_select",
 
     // Enemy Debuffs
-    "debuff_major_armor", // Sunder (2250) or IEA (2550)
-    "debuff_eskhandar",   // -1200
-    "debuff_ff",          // -505
-    "debuff_cor",         // -640
+    "debuff_major_armor", 
+    "debuff_eskhandar",
+    "debuff_ff",
+    "debuff_cor",
 
     // Rotation / Logic
     "rota_position",

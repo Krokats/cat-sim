@@ -88,7 +88,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Name</th>
-                                                <th>Dur / Mode</th>
+                                                <th>Dur</th>
                                                 <th>Iter</th>
                                                 <th>AP</th>
                                                 <th>Crit</th>
@@ -179,47 +179,10 @@
                                                 
                                                 <div class="gear-section-title">Consumables (Mutually Exclusive)</div>
                                                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
-                                                    <div class="input-group">
-                                                        <label>Weapon Buff</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="consum_wep">
-                                                                <option value="">None</option>
-                                                                <option value="consecrated">Consecrated Stone (100AP Undead)</option>
-                                                                <option value="elemental" selected>Elemental Stone (2% Crit)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="input-group">
-                                                        <label>Food</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="consum_food">
-                                                                <option value="">None</option>
-                                                                <option value="str" selected>Smoked Dumplings / Mushroom (20 Str)</option>
-                                                                <option value="agi">Sour Mountain Berry (10 Agi)</option>
-                                                                <option value="haste">Tel'abim Medley (2% Haste)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="input-group">
-                                                        <label>Blasted Lands</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="consum_blasted">
-                                                                <option value="">None</option>
-                                                                <option value="scorpok" selected>Scorpok Assay (25 Agi)</option>
-                                                                <option value="roids">R.O.I.D.S (25 Str)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="input-group">
-                                                        <label>Jujus / Firewater</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="consum_juju">
-                                                                <option value="">None</option>
-                                                                <option value="firewater">Winterfall Firewater (35 AP)</option>
-                                                                <option value="might" selected>Juju Might (40 AP)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
+                                                    <div class="input-group"><label>Weapon Buff</label><div class="select-wrapper"><select id="consum_wep"><option value="">None</option><option value="consecrated">Consecrated Stone (100AP Undead)</option><option value="elemental" selected>Elemental Stone (2% Crit)</option></select></div></div>
+                                                    <div class="input-group"><label>Food</label><div class="select-wrapper"><select id="consum_food"><option value="">None</option><option value="str" selected>Smoked Dumplings / Mushroom (20 Str)</option><option value="agi">Sour Mountain Berry (10 Agi)</option><option value="haste">Tel'abim Medley (2% Haste)</option></select></div></div>
+                                                    <div class="input-group"><label>Blasted Lands</label><div class="select-wrapper"><select id="consum_blasted"><option value="">None</option><option value="scorpok" selected>Scorpok Assay (25 Agi)</option><option value="roids">R.O.I.D.S (25 Str)</option></select></div></div>
+                                                    <div class="input-group"><label>Jujus / Firewater</label><div class="select-wrapper"><select id="consum_juju"><option value="">None</option><option value="firewater">Winterfall Firewater (35 AP)</option><option value="might" selected>Juju Might (40 AP)</option></select></div></div>
                                                 </div>
 
                                                 <div class="checkbox-grid">
@@ -230,46 +193,10 @@
 
                                                 <div class="gear-section-title">Raid Buffs</div>
                                                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
-                                                    <div class="input-group">
-                                                        <label>Mark of the Wild</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="buff_motw">
-                                                                <option value="">None</option>
-                                                                <option value="reg">Regular (+12)</option>
-                                                                <option value="imp" selected>Improved (+16)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="input-group">
-                                                        <label>Blessing of Might</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="buff_might">
-                                                                <option value="">None</option>
-                                                                <option value="reg">Regular (+185 AP)</option>
-                                                                <option value="imp" selected>Improved (+240 AP)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="input-group">
-                                                        <label>Battle Shout</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="buff_bs">
-                                                                <option value="">None</option>
-                                                                <option value="reg">Regular (+232 AP)</option>
-                                                                <option value="imp" selected>Improved (+290 AP)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="input-group">
-                                                        <label>Trueshot Aura</label>
-                                                        <div class="select-wrapper">
-                                                            <select id="buff_tsa">
-                                                                <option value="">None</option>
-                                                                <option value="reg">Regular (+55 AP)</option>
-                                                                <option value="mod" selected>Modified (+5% AP)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
+                                                    <div class="input-group"><label>Mark of the Wild</label><div class="select-wrapper"><select id="buff_motw"><option value="">None</option><option value="reg">Regular (+12)</option><option value="imp" selected>Improved (+16)</option></select></div></div>
+                                                    <div class="input-group"><label>Blessing of Might</label><div class="select-wrapper"><select id="buff_might"><option value="">None</option><option value="reg">Regular (+185 AP)</option><option value="imp" selected>Improved (+240 AP)</option></select></div></div>
+                                                    <div class="input-group"><label>Battle Shout</label><div class="select-wrapper"><select id="buff_bs"><option value="">None</option><option value="reg">Regular (+232 AP)</option><option value="imp" selected>Improved (+290 AP)</option></select></div></div>
+                                                    <div class="input-group"><label>Trueshot Aura</label><div class="select-wrapper"><select id="buff_tsa"><option value="">None</option><option value="reg">Regular (+55 AP)</option><option value="mod" selected>Modified (+5% AP)</option></select></div></div>
                                                 </div>
 
                                                 <div class="checkbox-grid">
@@ -289,12 +216,6 @@
                                             <div class="card-body">
                                                 <div class="input-group"><label>Fight Duration (s)</label><input type="number" id="simTime" value="60"></div>
                                                 <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="1000"></div>
-                                                <div class="input-group"><label>Calculation Method</label>
-                                                    <div class="select-wrapper"><select id="calcMethod">
-                                                            <option value="avg">Average DPS</option>
-                                                            <option value="S">Detailed Log (1 Run)</option>
-                                                        </select></div>
-                                                </div>
                                             </div>
                                         </div>
 
@@ -374,14 +295,7 @@
                                                 </div>
                                                 
                                                 <div class="gear-section-title">Debuffs (Armor)</div>
-                                                <div class="input-group">
-                                                    <label>Major Armor Reduct</label>
-                                                    <div class="select-wrapper"><select id="debuff_major_armor">
-                                                            <option value="">None</option>
-                                                            <option value="sunder" selected>Sunder Armor x5 (-2250)</option>
-                                                            <option value="iea">Imp. Exposed Armor (-2550)</option>
-                                                        </select></div>
-                                                </div>
+                                                <div class="input-group"><label>Major Armor Reduct</label><div class="select-wrapper"><select id="debuff_major_armor"><option value="">None</option><option value="sunder" selected>Sunder Armor x5 (-2250)</option><option value="iea">Imp. Exposed Armor (-2550)</option></select></div></div>
                                                 <div class="checkbox-grid" style="grid-template-columns: 1fr;">
                                                     <label class="custom-checkbox"><input type="checkbox" id="debuff_eskhandar"><span class="checkmark"></span> Spirit of Eskhandar (-1200)</label>
                                                     <label class="custom-checkbox"><input type="checkbox" id="debuff_ff" checked><span class="checkmark"></span> Faerie Fire (-505)</label>
@@ -514,10 +428,7 @@
                                     <div class="log-container">
                                         <table class="log-table">
                                             <thead>
-                                                <tr>
-                                                    <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
-                                                    <th>Dmg</th><th>Info</th>
-                                                </tr>
+                                                <tr><th>Time</th><th>Event</th><th>Ability</th><th>Result</th><th>Dmg</th><th>Info</th></tr>
                                             </thead>
                                             <tbody id="logTableBody"></tbody>
                                         </table>

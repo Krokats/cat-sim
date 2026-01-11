@@ -25,22 +25,19 @@ async function loadDatabase() {
         updateProgress(60);
 
         ITEM_DB = items.filter(i => {
+
+            // FIX: Some JSONs use 'level', some 'itemLevel'
             i.itemLevel = i.level || i.itemLevel || 0;
+            // Filter Junk
             if ((i.quality || 0) < 2) return false;
-            if (i.itemLevel < 35 && i.slot !== "Relic" && i.slot !== "Idol" && i.slot !== "Trinket") return false;
+            if (i.itemLevel < 30 && i.slot !== "Relic" && i.slot !== "Idol") return false;
+
+            // CLASS FILTER: 512 = Druid
+            if (i.allowableClasses && i.allowableClasses !== -1 && (i.allowableClasses & 512) === 0) return false;
+
+            // ARMOR FILTER: Only Cloth(1), Leather(2) or None(0)
             if (i.armorType && i.armorType > 2) return false;
-            if (i.slot === "Shield") return false;
-            var interesting = false;
-            if (i.id === 8345 || i.id === 9449 || i.id === 23207) interesting = true;
-            if (i.agility > 0 || i.strength > 0) interesting = true;
-            if (i.effects) {
-                if (i.effects.attackPower > 0 || i.effects.feralAttackPower > 0 || i.effects.crit > 0 || i.effects.hit > 0) interesting = true;
-                if (i.effects.custom && Array.isArray(i.effects.custom)) {
-                    var customStr = i.effects.custom.join(" ");
-                    if (customStr.includes("Attack Power") || customStr.includes("Cat") || customStr.includes("Feral")) interesting = true;
-                }
-            }
-            return interesting;
+            return true;
         });
 
         ITEM_ID_MAP = {};
@@ -72,6 +69,7 @@ function initGearPlannerUI() {
 function getIconUrl(iconName) {
     if (!iconName) return "https://wow.zamimg.com/images/wow/icons/large/inv_misc_questionmark.jpg";
     var cleanName = iconName.replace(/\\/g, "/").split("/").pop().replace(/\.jpg|\.png/g, "").toLowerCase();
+    // Use local folder
     return "data/wow-icons/" + cleanName + ".jpg";
 }
 
@@ -160,7 +158,6 @@ function showTooltip(e, item) {
         if (eff.crit) html += '<div class="tt-green">Equip: Improves your chance to get a critical strike by ' + eff.crit + '%.</div>';
         if (eff.attackPower) html += '<div class="tt-green">Equip: + ' + eff.attackPower + ' Attack Power.</div>';
         if (eff.feralAttackPower) html += '<div class="tt-green">Equip: + ' + eff.feralAttackPower + ' Attack Power in Cat, Bear, and Dire Bear forms only.</div>';
-        if (item.id === 9449) html += '<div class="tt-green">Use: Increases attack speed by 50% for 30 sec. (3 Charges)</div>';
         if (eff.custom && Array.isArray(eff.custom)) {
             eff.custom.forEach(function (line) { html += '<div class="tt-green">' + line + '</div>'; });
         }
@@ -262,17 +259,25 @@ function renderItemList(filterText) {
     unequipDiv.onclick = function () { selectItem(0); };
     unequipDiv.innerHTML = '<div class="item-row-icon" style="background:#333;"></div><div class="item-row-details"><div class="item-row-name" style="color:#888;">- Unequip -</div></div>';
     list.appendChild(unequipDiv);
-
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
     if (slotKey.includes("Trinket")) slotKey = "Trinket";
-    
+    if (slotKey === "Idol") slotKey = "Relic";
+
     var relevantItems = ITEM_DB.filter(function (i) {
+        if (CURRENT_SELECTING_SLOT === "Main Hand") {
+            var s = i.slot.toLowerCase().replace(/[\s-]/g, "");
+            if (s !== "mainhand" && s !== "onehand" && s !== "twohand") return false;
+            var validTypes = [4, 5, 6, 10, 13];
+            return validTypes.indexOf(i.weaponType) !== -1;
+        }
+
         if (CURRENT_SELECTING_SLOT === "Finger 1" && GEAR_SELECTION["Finger 2"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Finger 2" && GEAR_SELECTION["Finger 1"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id) return false;
-        if (CURRENT_SELECTING_SLOT === "Main Hand") return i.slot === "Mainhand" || i.slot === "Onehand" || i.slot === "Twohand";
+
+        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Offhand" || i.slot === "Shield");
         return i.slot === slotKey;
     });
 
@@ -392,9 +397,6 @@ function calculateItemScore(item, slotNameOverride) {
             }
         });
     }
-    if (item.id === 8345) score += 300; 
-    if (item.id === 9449) score += 500; 
-    if (item.id === 23207) score += 50; 
     return score;
 }
 
@@ -463,8 +465,6 @@ function calculateGearStats() {
                     if (!setCounts[item.setName]) setCounts[item.setName] = 0;
                     setCounts[item.setName]++;
                 }
-                if (item.id === 8345) hasWolfshead = true;
-                if (item.id === 9449) hasMCP = true;
             }
         }
     }
