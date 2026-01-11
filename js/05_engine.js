@@ -548,7 +548,7 @@ function runCoreSimulation(cfg) {
             // 6. Shred / Claw
             if (!action) {
                 // FIXED: Condition now allows Shred if energy is sufficient, not just OoC
-                if (b(isOoc || bleedImmune) && behind && shredActive) {
+                if ((isOoc || bleedImmune) && behind && shredActive) {
                     if (energy >= costShred || isOoc) action = "Shred";
                 } 
                 if (!action && clawActive) {
