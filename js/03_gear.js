@@ -432,21 +432,12 @@ function calculateGearStats() {
     var race = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
     // 1. Calculate Hidden Base Values
-    // Nackter AP Wert im Character Screen = RACE_STATS.ap
-    // Davon kommt ein Teil aus den Basis-Attributen: Str*2 + Agi*1
-    // Der Rest ist eine "versteckte" Base AP.
-    var baseApFromStats = (race.str * 2) + (race.agi * 1);
-    var hiddenBaseAp = race.ap - baseApFromStats;
-
-    // Nackter Crit Wert = RACE_STATS.crit
-    // Davon kommt ein Teil aus Agi: Agi / 20 (0.05)
-    var baseCritFromStats = race.agi * 0.05;
-    var hiddenBaseCrit = race.crit - baseCritFromStats;
+    var hiddenBaseAp = race.ap; 
+    var hiddenBaseCrit = race.crit;
 
     // 2. Initialize Bonus Accumulators
     var bonus = { str: 0, agi: 0, int: 0, ap: 0, crit: 0, hit: 0, haste: 0 };
     var setCounts = {};
-    var hasWolfshead = false; var hasMCP = false; var hasT05_4p = false;
 
     // 3. Sum Items
     for (var slot in GEAR_SELECTION) {
@@ -475,8 +466,6 @@ function calculateGearStats() {
                     if (!setCounts[item.setName]) setCounts[item.setName] = 0;
                     setCounts[item.setName]++;
                 }
-                if (item.id === 8345) hasWolfshead = true;
-                if (item.id === 9449) hasMCP = true;
             }
         }
     }
@@ -554,16 +543,16 @@ function calculateGearStats() {
     var finalAgi = Math.floor((race.agi + bonus.agi) * statMod); // No HotW for Agi
 
     // 7. FINAL CALCULATIONS
-    // AP = HiddenBase + (Str*2) + (Agi*1) + BonusAP
-    var finalAP = hiddenBaseAp + (finalStr * 2) + (finalAgi * 1) + bonus.ap;
+    // AP = RaceAP(Base) + (Str*2) + (Agi*1) + BonusAP
+    var finalAP = race.ap + (finalStr * 2) + (finalAgi * 1) + bonus.ap;
     
     // Predatory Strikes (3/3): +10% AP
     apMod *= 1.10;
     finalAP = Math.floor(finalAP * apMod);
 
-    // Crit = HiddenBase + (Agi / 20) + BonusCrit
+    // Crit = RaceCrit(Base) + (Agi / 20) + BonusCrit
     var critFromAgi = finalAgi / 20.0;
-    var finalCrit = hiddenBaseCrit + critFromAgi + bonus.crit;
+    var finalCrit = race.crit + critFromAgi + bonus.crit;
     
     // Talent/Buff Crits
     if (getVal("buff_lotp")) finalCrit += 3.0;
@@ -574,10 +563,6 @@ function calculateGearStats() {
 
     // 8. UPDATE UI
     // Update Set checkboxes
-    if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
-    var elWolf = document.getElementById("meta_wolfshead"); if (elWolf) elWolf.checked = hasWolfshead;
-    var elMCP = document.getElementById("item_mcp"); if (elMCP) elMCP.checked = hasMCP;
-    var elT05 = document.getElementById("set_t05_4p"); if (elT05) elT05.checked = hasT05_4p;
 
     // Write to Inputs
     var isManual = document.getElementById("manual_stats") ? document.getElementById("manual_stats").checked : false;
