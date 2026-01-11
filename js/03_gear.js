@@ -582,14 +582,14 @@ function calculateGearStats() {
 
     // 7. FINAL CALCULATIONS
     // AP = RaceAP(Base) + (Str*2) + (Agi*1) + BonusAP
-    var finalAP = race.ap + (finalStr * 2) + (finalAgi * 1) + bonus.ap;
+    var finalAP = race.ap + ((finalStr-race.str) * 2) + ((finalAgi-race.agi) * 1) + bonus.ap;
 
     // Predatory Strikes (3/3): +10% AP + Trueshot % AP
     apMod += 10;
     finalAP = Math.floor(finalAP * (1 + apMod / 100));
 
     // Crit = RaceCrit(Base) + (Agi / 20) + BonusCrit
-    var critFromAgi = finalAgi / 20.0;
+    var critFromAgi = (finalAgi-race.agi) / 20.0;
     var finalCrit = race.crit + critFromAgi + bonus.crit;
 
     // Talent/Buff Crits
