@@ -16,9 +16,9 @@ function renderSidebar() {
     // 1. Overview / Comparison Button
     var btnOv = document.createElement("div");
     btnOv.className = "sidebar-btn btn-overview" + (CURRENT_VIEW === 'comparison' ? " active" : "");
-    btnOv.innerHTML = "☰"; 
+    btnOv.innerHTML = "☰";
     btnOv.title = "Comparison View";
-    btnOv.onclick = function() { showComparisonView(); };
+    btnOv.onclick = function () { showComparisonView(); };
     sb.appendChild(btnOv);
 
     // Separator
@@ -27,12 +27,12 @@ function renderSidebar() {
     sb.appendChild(sep);
 
     // 2. Sim Buttons
-    SIM_LIST.forEach(function(sim, idx) {
+    SIM_LIST.forEach(function (sim, idx) {
         var btn = document.createElement("div");
         btn.className = "sidebar-btn" + (CURRENT_VIEW === 'single' && ACTIVE_SIM_INDEX === idx ? " active" : "");
         btn.innerText = (idx + 1);
         btn.title = sim.name;
-        btn.onclick = function() { switchSim(idx); };
+        btn.onclick = function () { switchSim(idx); };
         sb.appendChild(btn);
     });
 
@@ -41,7 +41,7 @@ function renderSidebar() {
     btnAdd.className = "sidebar-btn btn-add";
     btnAdd.innerText = "+";
     btnAdd.title = "Add Simulation";
-    btnAdd.onclick = function() { addSim(); };
+    btnAdd.onclick = function () { addSim(); };
     sb.appendChild(btnAdd);
 }
 
@@ -49,10 +49,10 @@ function addSim(isInit) {
     // Create new Sim Object
     var id = Date.now();
     var newSim = new SimObject(id, "Simulation " + (SIM_LIST.length + 1));
-    
+
     // Default Config will be grabbed from current UI state via getSimInputs()
-    newSim.config = typeof getSimInputs === "function" ? getSimInputs() : {}; 
-    newSim.gear = {}; 
+    newSim.config = typeof getSimInputs === "function" ? getSimInputs() : {};
+    newSim.gear = {};
     newSim.enchants = {};
 
     // Copy current gear if not init (Cloning for convenience)
@@ -86,15 +86,15 @@ function switchSim(index) {
     // 4. Update View
     document.getElementById("comparisonView").classList.add("hidden");
     document.getElementById("singleSimView").classList.remove("hidden");
-    
+
     // Update Header Name
     var nameInput = document.getElementById("simName");
-    if(nameInput) nameInput.value = SIM_DATA.name;
+    if (nameInput) nameInput.value = SIM_DATA.name;
 
     renderSidebar();
-    
+
     // Clear Results until run
-    if(!SIM_DATA.results) {
+    if (!SIM_DATA.results) {
         document.getElementById("simResultsArea").classList.add("hidden");
     } else {
         updateSimulationResults(SIM_DATA);
@@ -110,7 +110,7 @@ function showComparisonView() {
     CURRENT_VIEW = 'comparison';
     document.getElementById("singleSimView").classList.add("hidden");
     document.getElementById("comparisonView").classList.remove("hidden");
-    
+
     renderComparisonTable();
     renderSidebar();
 }
@@ -123,7 +123,7 @@ function deleteSim(index) {
     if (confirm("Delete " + SIM_LIST[index].name + "?")) {
         SIM_LIST.splice(index, 1);
         if (ACTIVE_SIM_INDEX >= SIM_LIST.length) ACTIVE_SIM_INDEX = SIM_LIST.length - 1;
-        
+
         // If we were in comparison, stay there, else switch
         if (CURRENT_VIEW === 'comparison') {
             renderComparisonTable();
@@ -145,9 +145,9 @@ function updateSimName() {
 // Helper: Save UI inputs to SIM_LIST object
 function saveSimData(idx) {
     var s = SIM_LIST[idx];
-    if(!s) return;
-    
-    if(typeof getSimInputs === 'function') {
+    if (!s) return;
+
+    if (typeof getSimInputs === 'function') {
         s.config = getSimInputs();
     }
     s.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
@@ -156,8 +156,8 @@ function saveSimData(idx) {
 
 // Helper: Load SIM_LIST object to UI inputs
 function loadSimDataToUI(sim) {
-    if(!sim) return;
-    
+    if (!sim) return;
+
     // Load Gear
     GEAR_SELECTION = sim.gear || {};
     ENCHANT_SELECTION = sim.enchants || {};
@@ -166,19 +166,19 @@ function loadSimDataToUI(sim) {
 
     // Load Config Inputs
     var c = sim.config;
-    if(!c) return;
+    if (!c) return;
 
     // Apply config to all known IDs (defined in 01_globals.js)
-    CONFIG_IDS.forEach(function(id) {
+    CONFIG_IDS.forEach(function (id) {
         if (c[id] !== undefined) {
-             var el = document.getElementById(id);
-             if(el) {
-                 if(el.type === 'checkbox') el.checked = (c[id] == 1 || c[id] === true);
-                 else el.value = c[id];
-             }
+            var el = document.getElementById(id);
+            if (el) {
+                if (el.type === 'checkbox') el.checked = (c[id] == 1 || c[id] === true);
+                else el.value = c[id];
+            }
         }
     });
-    
+
     // Trigger updates for derived UI elements (summaries)
     updatePlayerStats();
     updateEnemyInfo();
@@ -193,12 +193,12 @@ function renderComparisonTable() {
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    SIM_LIST.forEach(function(sim, idx) {
+    SIM_LIST.forEach(function (sim, idx) {
         var r = sim.results;
         var c = sim.config || {};
-        
+
         var tr = document.createElement("tr");
-        
+
         var dpsAvg = "-";
         if (r) {
             dpsAvg = Math.floor(r.dps);
@@ -234,11 +234,11 @@ function getSavedStat(sim, id) {
 function getRotationShort(c) {
     var parts = [];
     if (c.rota_position === 'back') parts.push("Shred"); else parts.push("Claw");
-    
+
     if (c.use_reshift) parts.push("Shift<" + c.reshift_energy);
     if (c.use_rip) parts.push("Rip>" + c.rip_cp);
     if (c.use_fb) parts.push("FB>" + c.fb_energy);
-    
+
     return parts.join(", ");
 }
 
@@ -254,16 +254,16 @@ function getGearShort(sim) {
 function runAllSims() {
     showProgress("Running All Simulations...");
     var idx = 0;
-    
+
     function next() {
         if (idx >= SIM_LIST.length) {
             hideProgress();
             renderComparisonTable();
             return;
         }
-        
+
         var sim = SIM_LIST[idx];
-        
+
         try {
             // Engine must be available as runCoreSimulation
             if (typeof runCoreSimulation !== 'function') {
@@ -272,22 +272,22 @@ function runAllSims() {
 
             var all = [];
             var iterations = sim.config.iterations || 100;
-            
-            for(var i=0; i < iterations; i++) {
+
+            for (var i = 0; i < iterations; i++) {
                 all.push(runCoreSimulation(sim.config));
             }
             sim.results = aggregateResults(all);
-            
+
             updateProgress(Math.floor(((idx + 1) / SIM_LIST.length) * 100));
             idx++;
             setTimeout(next, 10);
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             idx++;
             setTimeout(next, 10);
         }
     }
-    
+
     setTimeout(next, 50);
 }
 
@@ -296,16 +296,21 @@ function runAllSims() {
 // ============================================================================
 
 function setupUIListeners() {
-    // 1. Standard Inputs Change -> Save State
+    // 1. Standard Inputs Change -> Save State & Recalculate
     var inputs = document.querySelectorAll("input, select");
-    inputs.forEach(function(el) {
-        el.addEventListener("change", function() {
+    inputs.forEach(function (el) {
+        el.addEventListener("change", function () {
             // Ignore boss select in general loop to prevent double firing, handled separately
-            if(el.id === "enemy_boss_select") return;
+            if (el.id === "enemy_boss_select") return;
 
             if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
                 saveSimData(ACTIVE_SIM_INDEX);
-                // Update text fields immediately
+
+                // IMPORTANT: Recalculate stats whenever any input (including Buffs) changes
+                if (typeof calculateGearStats === 'function') {
+                    calculateGearStats();
+                }
+
                 updatePlayerStats();
                 updateEnemyInfo();
             }
@@ -315,13 +320,13 @@ function setupUIListeners() {
     // 2. Boss Select Dropdown Logic
     renderBossSelect();
     var bossSel = document.getElementById("enemy_boss_select");
-    if(bossSel) {
-        bossSel.addEventListener("change", function() {
+    if (bossSel) {
+        bossSel.addEventListener("change", function () {
             var val = bossSel.value;
             // If value is set (not empty), update Armor Field
-            if(val) {
+            if (val) {
                 var armorInput = document.getElementById("enemy_armor");
-                if(armorInput) {
+                if (armorInput) {
                     armorInput.value = val;
                     // Trigger updates
                     updateEnemyInfo();
@@ -343,22 +348,22 @@ function setupUIListeners() {
  */
 function renderBossSelect() {
     var sel = document.getElementById("enemy_boss_select");
-    if(!sel || !BOSS_PRESETS) return;
-    
+    if (!sel || !BOSS_PRESETS) return;
+
     // Clear existing options except the first "Custom" one
-    while(sel.options.length > 1) {
+    while (sel.options.length > 1) {
         sel.remove(1);
     }
-    
+
     // Group by 'group' key
     var groups = {};
     BOSS_PRESETS.forEach(b => {
-        if(!groups[b.group]) groups[b.group] = [];
+        if (!groups[b.group]) groups[b.group] = [];
         groups[b.group].push(b);
     });
-    
+
     // Create OptGroups
-    for(var g in groups) {
+    for (var g in groups) {
         var grp = document.createElement("optgroup");
         grp.label = g;
         groups[g].forEach(b => {
@@ -397,7 +402,7 @@ function updateEnemyInfo() {
     // DR = Armor / (Armor + 5882.5)
     var dr = effArmor / (effArmor + 5882.5);
     var pct = (dr * 100).toFixed(2);
-    
+
     setText('sumRes', pct + "% (Eff: " + effArmor + ")");
 }
 
@@ -407,7 +412,7 @@ function updatePlayerStats() {
     var crit = getVal("stat_crit");
     var hit = getVal("stat_hit");
     var haste = getVal("stat_haste");
-    
+
     setText("sumAP", Math.floor(ap));
     setText("sumCrit", crit.toFixed(2) + "%");
     setText("sumHit", hit.toFixed(2) + "%");
@@ -415,44 +420,44 @@ function updatePlayerStats() {
     setText("gp_ap", Math.floor(ap));
     setText("gp_crit", crit.toFixed(2) + "%");
     setText("gp_hit", hit.toFixed(2) + "%");
-    
+
     updateRotaSummary();
     updateTrinketSummary();
 }
 
 function updateRotaSummary() {
     var list = document.getElementById("sumRotaList");
-    if(!list) return;
+    if (!list) return;
     list.innerHTML = "";
-    var add = (t, c) => { var li = document.createElement("li"); li.innerText = t; if(c) li.style.color = c; list.appendChild(li); };
-    
+    var add = (t, c) => { var li = document.createElement("li"); li.innerText = t; if (c) li.style.color = c; list.appendChild(li); };
+
     // Priority Display
-    if(getVal("use_rip")) add("Rip (>" + getVal("rip_cp") + " CP)", "#f44336");
-    if(getVal("use_fb")) add("Bite (> 5 CP, >" + getVal("fb_energy") + " En)", "#ff5722");
-    
-    if(getVal("use_reshift")) add("Reshift (<" + getVal("reshift_energy") + " En)", "#4caf50");
-    if(getVal("use_tf")) add("Tiger's Fury", "#ff9800");
-    if(getVal("use_ff")) add("Faerie Fire", "#a335ee");
-    if(getVal("use_rake")) add("Rake", "#e57373");
-    
-    if(getVal("rota_position") === "back") {
-        if(getVal("use_shred")) add("Shred (Behind)", "#ffeb3b");
+    if (getVal("use_rip")) add("Rip (>" + getVal("rip_cp") + " CP)", "#f44336");
+    if (getVal("use_fb")) add("Bite (> 5 CP, >" + getVal("fb_energy") + " En)", "#ff5722");
+
+    if (getVal("use_reshift")) add("Reshift (<" + getVal("reshift_energy") + " En)", "#4caf50");
+    if (getVal("use_tf")) add("Tiger's Fury", "#ff9800");
+    if (getVal("use_ff")) add("Faerie Fire", "#a335ee");
+    if (getVal("use_rake")) add("Rake", "#e57373");
+
+    if (getVal("rota_position") === "back") {
+        if (getVal("use_shred")) add("Shred (Behind)", "#ffeb3b");
     } else {
-        if(getVal("use_claw")) add("Claw (Front)", "#ff9800");
+        if (getVal("use_claw")) add("Claw (Front)", "#ff9800");
     }
 }
 
 function updateTrinketSummary() {
     var list = document.getElementById("sumTrinketList");
-    if(!list) return;
+    if (!list) return;
     list.innerHTML = "";
-    
+
     var t1 = GEAR_SELECTION["Trinket 1"];
     var t2 = GEAR_SELECTION["Trinket 2"];
     var i = GEAR_SELECTION["Idol"];
-    
+
     [t1, t2, i].forEach(id => {
-        if(id && ITEM_ID_MAP[id]) {
+        if (id && ITEM_ID_MAP[id]) {
             var li = document.createElement("li");
             li.innerText = ITEM_ID_MAP[id].name;
             li.style.color = "#ccc";
@@ -474,7 +479,7 @@ function updateSimulationResults(sim) {
     setText("resDps", Math.floor(r.dps));
     setText("resTotalDmg", (r.totalDmg / 1000).toFixed(1) + "k");
     setText("resDuration", r.duration + "s");
-    
+
     // Counts
     var shifts = r.counts ? (r.counts["Powershift"] || 0) : 0;
     setText("resMana", Math.floor(shifts));
@@ -491,27 +496,27 @@ function renderDistBar(r) {
     var bar = document.getElementById("dmgDistBar");
     if (!bar) return;
     bar.innerHTML = "";
-    
+
     var total = r.totalDmg;
     var sorted = [];
-    for(var k in r.dmgSources) sorted.push({n:k, v:r.dmgSources[k]});
-    sorted.sort((a,b) => b.v - a.v);
-    
-    var colors = { 
-        "Auto Attack": "#fff", 
-        "Shred": "#ffeb3b", 
-        "Ferocious Bite": "#ff5722", 
-        "Rip": "#d32f2f", 
-        "Rake": "#f44336", 
-        "Claw": "#ff9800", 
-        "Rake (DoT)": "#e57373", 
+    for (var k in r.dmgSources) sorted.push({ n: k, v: r.dmgSources[k] });
+    sorted.sort((a, b) => b.v - a.v);
+
+    var colors = {
+        "Auto Attack": "#fff",
+        "Shred": "#ffeb3b",
+        "Ferocious Bite": "#ff5722",
+        "Rip": "#d32f2f",
+        "Rake": "#f44336",
+        "Claw": "#ff9800",
+        "Rake (DoT)": "#e57373",
         "Rip (DoT)": "#b71c1c",
         "Extra Attack": "#90caf9" // Windfury
     };
-    
+
     sorted.forEach(s => {
         var pct = (s.v / total) * 100;
-        if(pct < 1) return;
+        if (pct < 1) return;
         var d = document.createElement("div");
         d.style.width = pct + "%";
         d.style.backgroundColor = colors[s.n] || "#777";
@@ -522,25 +527,25 @@ function renderDistBar(r) {
 
 function renderResultTable(r) {
     var tb = document.getElementById("resTableBody");
-    if(!tb) return;
+    if (!tb) return;
     tb.innerHTML = "";
-    
+
     var total = r.totalDmg;
     var sorted = [];
-    for(var k in r.dmgSources) sorted.push({n:k, v:r.dmgSources[k]});
-    sorted.sort((a,b) => b.v - a.v);
-    
+    for (var k in r.dmgSources) sorted.push({ n: k, v: r.dmgSources[k] });
+    sorted.sort((a, b) => b.v - a.v);
+
     sorted.forEach(s => {
         var tr = document.createElement("tr");
         var dps = (s.v / r.duration).toFixed(1);
         var pct = ((s.v / total) * 100).toFixed(1);
         var count = r.counts[s.n] || 0;
-        
+
         // Crit %
-        var hits = count - (r.missCounts[s.n]||0) - (r.dodgeCounts[s.n]||0);
-        var critPct = hits > 0 ? ((r.critCounts[s.n]||0) / hits * 100).toFixed(1) : "0.0";
-        var glancePct = (s.n === "Auto Attack" && count > 0) ? ((r.glanceCounts[s.n]||0) / count * 100).toFixed(1) : "-";
-        
+        var hits = count - (r.missCounts[s.n] || 0) - (r.dodgeCounts[s.n] || 0);
+        var critPct = hits > 0 ? ((r.critCounts[s.n] || 0) / hits * 100).toFixed(1) : "0.0";
+        var glancePct = (s.n === "Auto Attack" && count > 0) ? ((r.glanceCounts[s.n] || 0) / count * 100).toFixed(1) : "-";
+
         tr.innerHTML = `
             <td style="text-align:left;">${s.n}</td>
             <td>${Math.floor(s.v).toLocaleString()}</td>
@@ -569,9 +574,9 @@ function renderLogTable(log) {
 }
 
 function updateLogView() {
-    // Dynamic Header Update
+    // Dynamic Headers for Extended Log
     var container = document.querySelector(".log-container table thead tr");
-    if(container) {
+    if (container) {
         container.innerHTML = `
             <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
             <th>Dmg(N)</th><th>Dmg(C)</th><th>Dmg(T)</th><th>Spec</th>
@@ -582,28 +587,28 @@ function updateLogView() {
     }
 
     var tb = document.getElementById("logTableBody");
-    if(!tb) return;
+    if (!tb) return;
     tb.innerHTML = "";
-    
-    var start = (LOG_PAGE-1) * LOG_PER_PAGE;
+
+    var start = (LOG_PAGE - 1) * LOG_PER_PAGE;
     var end = start + LOG_PER_PAGE;
     var slice = LOG_DATA.slice(start, end);
-    
-    // Helpers
+
+    // Helper to hide zeroes
     var val = (v) => v > 0 ? Math.floor(v) : "";
     var valF = (v) => v > 0 ? v.toFixed(1) : "";
 
     slice.forEach(e => {
         var tr = document.createElement("tr");
-        // Colors
+        // Styling based on event
         var cEvt = "#ccc";
-        if(e.event === "Damage") cEvt = "#fff";
-        if(e.event === "Cast") cEvt = "#ffd700";
-        
+        if (e.event === "Damage") cEvt = "#fff";
+        if (e.event === "Cast") cEvt = "#ffd700";
+
         var cAb = "#ccc";
-        if(e.ability === "Shred") cAb = "#ffeb3b";
-        if(e.ability.includes("Rip") || e.ability.includes("Rake")) cAb = "#f44336";
-        
+        if (e.ability === "Shred") cAb = "#ffeb3b";
+        if (e.ability.includes("Rip") || e.ability.includes("Rake")) cAb = "#f44336";
+
         tr.innerHTML = `
             <td>${e.t.toFixed(3)}</td>
             <td style="color:${cEvt}">${e.event}</td>
@@ -628,34 +633,32 @@ function updateLogView() {
         `;
         tb.appendChild(tr);
     });
-    
-    setText("logPageLabel", LOG_PAGE + " / " + Math.ceil(LOG_DATA.length/LOG_PER_PAGE));
+
+    setText("logPageLabel", LOG_PAGE + " / " + Math.ceil(LOG_DATA.length / LOG_PER_PAGE));
 }
 
 function nextLogPage() {
-    if(LOG_PAGE * LOG_PER_PAGE < LOG_DATA.length) { LOG_PAGE++; updateLogView(); }
+    if (LOG_PAGE * LOG_PER_PAGE < LOG_DATA.length) { LOG_PAGE++; updateLogView(); }
 }
 function prevLogPage() {
-    if(LOG_PAGE > 1) { LOG_PAGE--; updateLogView(); }
+    if (LOG_PAGE > 1) { LOG_PAGE--; updateLogView(); }
 }
 
 function downloadCSV() {
-    if(!LOG_DATA || LOG_DATA.length===0) return;
-    
-    // Header containing Energy
-    var csv = "Time,Event,Ability,Result,Damage Normal,Damage Crit,Damage Tick,Special Damage,Rem Rake,Rem Rip,CP,OoC,AP,Haste,Speed,Mana,Energy,Procs,On-Use CDs,Info\n";
-    
+    if (!LOG_DATA || LOG_DATA.length === 0) return;
+
+    var csv = "Time,Event,Ability,Result,Damage Normal,Damage Crit,Damage Tick,Special Damage,Remaining Time Rake,Remaining Time Rip,CP,Omen of Clarity (0/1),AP,Haste,Attack Speed,Mana,Energy,Procs,On-Use CDs,Info\n";
+
     LOG_DATA.forEach(r => {
         // Sanitize string fields
-        var i = (r.info||"").replace(/,/g, " ");
-        var p = (r.procs||"").replace(/,/g, " ");
-        var c = (r.cds||"").replace(/,/g, " ");
-        
-        // r.energy is now present
+        var i = (r.info || "").replace(/,/g, " ");
+        var p = (r.procs || "").replace(/,/g, " ");
+        var c = (r.cds || "").replace(/,/g, " ");
+
         csv += `${r.t.toFixed(3)},${r.event},${r.ability},${r.result},${r.dmgNorm},${r.dmgCrit},${r.dmgTick},${r.dmgSpec},${r.remRake.toFixed(1)},${r.remRip.toFixed(1)},${r.cp},${r.ooc},${r.ap},${r.haste.toFixed(2)},${r.speed.toFixed(2)},${r.mana},${r.energy},"${p}","${c}","${i}"\n`;
     });
-    
-    var blob = new Blob([csv], {type:"text/csv"});
+
+    var blob = new Blob([csv], { type: "text/csv" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url; a.download = "feral_sim_log_extended.csv";
@@ -666,6 +669,7 @@ function downloadCSV() {
 // IMPORT / EXPORT
 // ============================================================================
 function exportSettings() {
+    // Save all Sims
     var json = JSON.stringify(SIM_LIST);
     var b64 = LZString.compressToBase64(json);
     navigator.clipboard.writeText(b64).then(() => showToast("Settings copied to clipboard!"));
@@ -673,16 +677,16 @@ function exportSettings() {
 
 function importFromClipboard() {
     var val = prompt("Paste settings string:");
-    if(!val) return;
+    if (!val) return;
     try {
         var json = LZString.decompressFromBase64(val);
         var list = JSON.parse(json);
-        if(Array.isArray(list)) {
+        if (Array.isArray(list)) {
             SIM_LIST = list;
             switchSim(0);
             showToast("Import Successful!");
         }
-    } catch(e) { showToast("Import Failed"); console.error(e); }
+    } catch (e) { showToast("Import Failed"); console.error(e); }
 }
 
 // Helpers called from HTML directly

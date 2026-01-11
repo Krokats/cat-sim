@@ -4,7 +4,7 @@
  * Implements new Buffs/Consumables logic with OR conditions.
  */
 
-var ITEM_ID_MAP = {}; 
+var ITEM_ID_MAP = {};
 
 // ============================================================================
 // GEAR PLANNER LOGIC
@@ -83,7 +83,7 @@ function renderSlotColumn(pos, containerId) {
         var item = itemId ? ITEM_ID_MAP[itemId] : null;
         var enchantId = ENCHANT_SELECTION[slotName];
         var enchant = enchantId ? ENCHANT_DB.find(e => e.id == enchantId) : null;
-        
+
         var div = document.createElement("div");
         div.className = "char-slot";
         div.onmouseenter = function (e) { showTooltip(e, item); };
@@ -121,7 +121,7 @@ function renderSlotColumn(pos, containerId) {
             '<span class="slot-stats">' + statText + '</span>' +
             enchantHtml +
             '</div>' +
-            linkHtml; 
+            linkHtml;
         div.innerHTML = html;
         container.appendChild(div);
     });
@@ -145,7 +145,7 @@ function showTooltip(e, item) {
     if (item.slot) html += '<div class="tt-white">' + item.slot + '</div>';
     if (item.armor) html += '<div class="tt-white">' + item.armor + ' Armor</div>';
     html += '<div class="tt-spacer"></div>';
-    
+
     if (item.stamina) html += '<div class="tt-white">+' + item.stamina + ' Stamina</div>';
     if (item.strength) html += '<div class="tt-white">+' + item.strength + ' Strength</div>';
     if (item.agility) html += '<div class="tt-white">+' + item.agility + ' Agility</div>';
@@ -205,7 +205,7 @@ function showEnchantTooltip(e, enchantId) {
     var html = '<div class="tt-header"><div style="flex:1"><div class="tt-name" style="color:#1eff00">' + ench.name + '</div></div></div>';
     html += '<div class="tt-white">Enchant</div>';
     html += '<div class="tt-spacer"></div>';
-    if (ench.text) { html += '<div class="tt-green">' + ench.text + '</div>'; } 
+    if (ench.text) { html += '<div class="tt-green">' + ench.text + '</div>'; }
     else if (ench.effects) {
         var ef = ench.effects;
         if (ef.agility) html += '<div class="tt-green">+' + ef.agility + ' Agility</div>';
@@ -315,7 +315,10 @@ function selectItem(itemId) {
     }
     closeItemModal();
     initGearPlannerUI();
-    saveCurrentState(); 
+    saveCurrentState();
+    // FORCE UI UPDATE AFTER GEAR CHANGE
+    if (typeof updatePlayerStats === 'function') updatePlayerStats();
+    if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
 }
 
 // --- ENCHANT MODAL ---
@@ -341,7 +344,7 @@ function renderEnchantList() {
     list.appendChild(unequipDiv);
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
-    if (slotKey === "Main Hand") slotKey = "Two Hand"; 
+    if (slotKey === "Main Hand") slotKey = "Two Hand";
     var relevantEnchants = ENCHANT_DB.filter(function (e) { return e.slot === slotKey || e.slot === CURRENT_SELECTING_SLOT; });
     relevantEnchants.forEach(function (e) { e.simScore = calculateEnchantScore(e); });
     relevantEnchants.sort(function (a, b) { return b.simScore - a.simScore; });
@@ -363,23 +366,32 @@ function selectEnchant(enchId) {
     if (CURRENT_SELECTING_SLOT) ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = enchId;
     closeEnchantModal();
     initGearPlannerUI();
-    saveCurrentState(); 
+    saveCurrentState();
+    // FORCE UI UPDATE AFTER ENCHANT CHANGE
+    if (typeof updatePlayerStats === 'function') updatePlayerStats();
+    if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
 }
-function resetGear() { GEAR_SELECTION = {}; ENCHANT_SELECTION = {}; initGearPlannerUI(); }
+function resetGear() {
+    GEAR_SELECTION = {};
+    ENCHANT_SELECTION = {};
+    initGearPlannerUI();
+    if (typeof updatePlayerStats === 'function') updatePlayerStats();
+}
 function recalcItemScores() {
     if (!document.getElementById("itemSelectorModal").classList.contains("hidden")) {
         renderItemList(document.getElementById("itemSearchInput").value);
     }
-    initGearPlannerUI(); 
+    initGearPlannerUI();
+
 }
 
 // SCORING
 function calculateItemScore(item, slotNameOverride) {
     if (!item) return 0;
     var wAP = parseFloat(getVal("weight_ap") || 1.0);
-    var wStr = parseFloat(getVal("weight_str") || 2.4); 
-    var wAgi = parseFloat(getVal("weight_agi") || 2.5); 
-    var wCrit = parseFloat(getVal("weight_crit") || 22.0); 
+    var wStr = parseFloat(getVal("weight_str") || 2.4);
+    var wAgi = parseFloat(getVal("weight_agi") || 2.5);
+    var wCrit = parseFloat(getVal("weight_crit") || 22.0);
     var wHit = parseFloat(getVal("weight_hit") || 18.0);
     var score = 0;
     var e = item.effects || {};
@@ -390,7 +402,7 @@ function calculateItemScore(item, slotNameOverride) {
     score += (e.crit || 0) * wCrit;
     score += (e.hit || 0) * wHit;
     if (e.custom && Array.isArray(e.custom)) {
-        e.custom.forEach(function(line) {
+        e.custom.forEach(function (line) {
             var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
             if (matchAP) {
                 if (line.includes("Cat") || line.includes("forms") || !line.includes("form")) score += parseInt(matchAP[1]) * wAP;
@@ -422,12 +434,12 @@ function calculateGearStats() {
     var cs = {
         str: baseStats.str,
         agi: baseStats.agi,
-        int: baseStats.int, 
-        ap: baseStats.ap,   
+        int: baseStats.int,
+        ap: baseStats.ap,
         crit: baseStats.crit,
         hit: 0,
         haste: 0,
-        wepSkill: 300, 
+        wepSkill: 300,
         wepDmgMin: baseStats.minDmg,
         wepDmgMax: baseStats.maxDmg,
         apMod: 1.0 // For Percentage Mods
@@ -454,7 +466,7 @@ function calculateGearStats() {
                 cs.crit += (e.crit || 0);
                 cs.hit += (e.hit || 0);
                 if (e.custom && Array.isArray(e.custom)) {
-                    e.custom.forEach(function(line) {
+                    e.custom.forEach(function (line) {
                         var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
                         if (matchAP) {
                             if (line.includes("Cat") || line.includes("forms")) cs.ap += parseInt(matchAP[1]);
@@ -486,7 +498,7 @@ function calculateGearStats() {
     }
 
     // 4. BUFFS & CONSUMABLES (New Logic)
-    
+
     // Select: Mark of the Wild
     var valMotW = getVal("buff_motw");
     if (valMotW === "reg") { cs.str += 12; cs.agi += 12; cs.int += 12; }
@@ -552,35 +564,35 @@ function calculateGearStats() {
 
     // 5. ATTRIBUTE MULTIPLIERS (Kings + HotW)
     var hotwMod = 1.20; // 5/5
-    
+
     cs.str = Math.floor(cs.str * modStats * hotwMod);
     cs.int = Math.floor(cs.int * modStats * hotwMod);
     cs.agi = Math.floor(cs.agi * modStats); // No HotW for Agi
-    
+
     // 6. DERIVED STATS
     // AP = BaseAP + AGI + 2*STR + EquipAP + BuffAP
     cs.ap += (cs.str * 2) + (cs.agi * 1);
-    
+
     // Predatory Strikes (3/3): +10% AP? 
     // Wait, Predatory strikes scaling is usually Multiplicative.
     // "Increase attack power by 10%".
     cs.apMod *= 1.10;
-    
+
     // Apply AP Multipliers (Predatory + TSA%)
     cs.ap = Math.floor(cs.ap * cs.apMod);
 
     // Crit = BaseCrit + 0.05*AGI + EquipCrit + BuffCrit
     var critFromAgi = cs.agi * 0.05;
     cs.crit += critFromAgi;
-    
+
     // Sharpened Claws (3/3)
-    cs.crit += 6.0; 
-    
+    cs.crit += 6.0;
+
     // Natural Weapons (3/3) -> +3% Hit
     cs.hit += 3.0;
 
     // 7. SET BONUSES
-    if (setCounts["The Feralheart"] >= 4) hasT05_4p = true; 
+    if (setCounts["The Feralheart"] >= 4) hasT05_4p = true;
 
     var elWolf = document.getElementById("meta_wolfshead"); if (elWolf) elWolf.checked = hasWolfshead;
     var elMCP = document.getElementById("item_mcp"); if (elMCP) elMCP.checked = hasMCP;
@@ -599,10 +611,10 @@ function calculateGearStats() {
     updateInput("stat_crit", cs.crit, true);
     updateInput("stat_hit", cs.hit, false);
     updateInput("stat_haste", cs.haste, false);
-    updateInput("stat_wep_skill", cs.wepSkill, false); 
+    updateInput("stat_wep_skill", cs.wepSkill, false);
     updateInput("stat_wep_dmg_min", cs.wepDmgMin, false);
     updateInput("stat_wep_dmg_max", cs.wepDmgMax, false);
-    
+
     var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(cs.ap);
     var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = cs.crit.toFixed(2) + "%";
     var elP_Hit = document.getElementById("gp_hit"); if (elP_Hit) elP_Hit.innerText = cs.hit.toFixed(2) + "%";
