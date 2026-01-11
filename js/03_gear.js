@@ -77,15 +77,20 @@ function renderSlotColumn(pos, containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = "";
+
     SLOT_LAYOUT[pos].forEach(function (slotName) {
         var itemId = GEAR_SELECTION[slotName];
+        // Handle ID or Object (Legacy Safety)
         if (itemId && typeof itemId === 'object' && itemId.id) itemId = itemId.id;
+
         var item = itemId ? ITEM_ID_MAP[itemId] : null;
         var enchantId = ENCHANT_SELECTION[slotName];
         var enchant = enchantId ? ENCHANT_DB.find(e => e.id == enchantId) : null;
 
         var div = document.createElement("div");
         div.className = "char-slot";
+
+        // Simple Tooltip logic
         div.onmouseenter = function (e) { showTooltip(e, item); };
         div.onmousemove = function (e) { moveTooltip(e); };
         div.onmouseleave = function () { hideTooltip(); };
@@ -100,18 +105,26 @@ function renderSlotColumn(pos, containerId) {
             iconUrl = getIconUrl(item.icon);
             rarityClass = "q" + (item.quality || 1);
             displayName = item.name;
+            // NEW: Pass slotName to calculate score correctly (including active sets)
             var s = calculateItemScore(item, slotName);
-            statText = "EP: " + s.toFixed(1) + " | iLvl: " + item.itemLevel;
-            if (item.url) linkHtml = '<a href="' + item.url + '" target="_blank" class="slot-link-btn" title="Open in Database" onclick="event.stopPropagation()">🔗</a>';
+            statText = "Score: " + s.toFixed(1) + " | iLvl: " + item.itemLevel;
+
+            // LINK BUTTON LOGIC
+            if (item.url) {
+                linkHtml = '<a href="' + item.url + '" target="_blank" class="slot-link-btn" title="Open in Database" onclick="event.stopPropagation()">🔗</a>';
+            }
         }
 
+        // --- ENCHANT RENDER LOGIC ---
         var canEnchant = true;
         if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off")) canEnchant = false;
+
         var enchantHtml = "";
         if (canEnchant) {
             var enchName = enchant ? enchant.name : "+ Enchant";
             var enchStyle = enchant ? "color:#0f0; font-size:0.75rem;" : "color:#555; font-size:0.7rem; font-style:italic;";
             var eIdPass = enchant ? enchant.id : 0;
+            // Add hover events for enchant tooltip
             enchantHtml = '<div class="slot-enchant-click" onmouseenter="showEnchantTooltip(event, ' + eIdPass + ')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" onclick="event.stopPropagation(); openEnchantSelector(\'' + slotName + '\')" style="' + enchStyle + '; margin-top:2px; cursor:pointer;">' + enchName + '</div>';
         }
 
@@ -121,7 +134,7 @@ function renderSlotColumn(pos, containerId) {
             '<span class="slot-stats">' + statText + '</span>' +
             enchantHtml +
             '</div>' +
-            linkHtml;
+            linkHtml; // Append Link Button
         div.innerHTML = html;
         container.appendChild(div);
     });
@@ -333,21 +346,49 @@ function openEnchantSelector(slotName) {
     }
 }
 function closeEnchantModal() { var modal = document.getElementById("enchantSelectorModal"); if (modal) modal.classList.add("hidden"); CURRENT_SELECTING_SLOT = null; }
+
 function renderEnchantList() {
     var list = document.getElementById("modalEnchantList");
     if (!list) return;
     list.innerHTML = "";
+
+    // Remove Enchant Option
     var unequipDiv = document.createElement("div");
     unequipDiv.className = "item-row";
     unequipDiv.onclick = function () { selectEnchant(0); };
     unequipDiv.innerHTML = '<div class="item-row-details"><div class="item-row-name" style="color:#888;">- No Enchant -</div></div>';
     list.appendChild(unequipDiv);
+
     var slotKey = CURRENT_SELECTING_SLOT;
+    // Map Slots for DB query (Assume DB uses generic keys or check multiple)
+    // E.g. "Finger 1" -> "Finger"
     if (slotKey.includes("Finger")) slotKey = "Finger";
-    if (slotKey === "Main Hand") slotKey = "Two Hand";
-    var relevantEnchants = ENCHANT_DB.filter(function (e) { return e.slot === slotKey || e.slot === CURRENT_SELECTING_SLOT; });
+    if (slotKey.includes("Trinket")) slotKey = "Trinket";
+    if (slotKey === "Main Hand") slotKey = "Two Hand"; // Or One Hand, depends on logic. Enchants are usually "Weapon"
+
+    var relevantEnchants = ENCHANT_DB.filter(function (e) {
+        // 1. Class Filter (New)
+        // 512 = Druid
+        if (e.allowableClasses && e.allowableClasses !== -1) {
+            // If the bitmask does not contain the Druid bit, skip it
+            if ((e.allowableClasses & 512) === 0) return false;
+        }
+
+        // 2. Slot Filter (Existing)
+        if (CURRENT_SELECTING_SLOT === "Main Hand") return (e.slot === "Weapon" || e.slot === "Two Hand" || e.slot === "Mainhand"); // NEW: Mainhand
+        if (CURRENT_SELECTING_SLOT === "Off Hand") return (e.slot === "Shield"); // Only Shield Enchants
+        if (CURRENT_SELECTING_SLOT === "Feet") return (e.slot === "Boots" || e.slot === "Feet");
+        if (CURRENT_SELECTING_SLOT === "Hands") return (e.slot === "Gloves" || e.slot === "Hands");
+        if (CURRENT_SELECTING_SLOT === "Wrist") return (e.slot === "Bracer" || e.slot === "Wrist");
+        if (CURRENT_SELECTING_SLOT === "Back") return (e.slot === "Cloak" || e.slot === "Back");
+        if (CURRENT_SELECTING_SLOT.includes("Finger")) return (e.slot === "Finger"); // NEW: Finger (Neck cat in DB)
+
+        return e.slot === CURRENT_SELECTING_SLOT || e.slot === slotKey;
+    });
+
     relevantEnchants.forEach(function (e) { e.simScore = calculateEnchantScore(e); });
     relevantEnchants.sort(function (a, b) { return b.simScore - a.simScore; });
+
     relevantEnchants.forEach(function (ench) {
         var row = document.createElement("div");
         row.className = "item-row";
@@ -355,13 +396,18 @@ function renderEnchantList() {
         row.onmouseenter = function (e) { showEnchantTooltip(e, ench.id); };
         row.onmousemove = function (e) { moveTooltip(e); };
         row.onmouseleave = function () { hideTooltip(); };
-        var desc = ench.text || "";
+
+        var desc = ench.text || ""; // Show text description in list
+
         var html = '<div class="item-row-details"><div class="item-row-name" style="color: #1eff00;">' + ench.name + '</div><div class="item-row-sub">' + desc + '</div></div>' +
-            '<div class="item-score-badge"><span class="score-label">EP</span>' + ench.simScore.toFixed(1) + '</div>';
+            '<div class="item-score-badge"><span class="score-label">SCORE</span>' + ench.simScore.toFixed(1) + '</div>';
+
         row.innerHTML = html;
         list.appendChild(row);
     });
 }
+
+
 function selectEnchant(enchId) {
     if (CURRENT_SELECTING_SLOT) ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = enchId;
     closeEnchantModal();
@@ -371,6 +417,7 @@ function selectEnchant(enchId) {
     if (typeof updatePlayerStats === 'function') updatePlayerStats();
     if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
 }
+
 function resetGear() {
     GEAR_SELECTION = {};
     ENCHANT_SELECTION = {};
@@ -432,7 +479,7 @@ function calculateGearStats() {
     var race = RACE_STATS[raceName] || RACE_STATS["Tauren"];
 
     // 1. Calculate Hidden Base Values
-    var hiddenBaseAp = race.ap; 
+    var hiddenBaseAp = race.ap;
     var hiddenBaseCrit = race.crit;
 
     // 2. Initialize Bonus Accumulators
@@ -455,7 +502,7 @@ function calculateGearStats() {
                 bonus.crit += (e.crit || 0);
                 bonus.hit += (e.hit || 0);
                 if (e.custom && Array.isArray(e.custom)) {
-                    e.custom.forEach(function(line) {
+                    e.custom.forEach(function (line) {
                         var matchAP = line.match(/Equip: \+(\d+) Attack Power/i);
                         if (matchAP) {
                             if (line.includes("Cat") || line.includes("forms")) bonus.ap += parseInt(matchAP[1]);
@@ -509,7 +556,7 @@ function calculateGearStats() {
 
     // Consumables
     if (getVal("consum_mongoose")) { bonus.agi += 25; bonus.crit += 1; }
-    
+
     var valWep = getVal("consum_wep");
     if (valWep === "elemental") bonus.crit += 2;
     else if (valWep === "consecrated") {
@@ -519,7 +566,7 @@ function calculateGearStats() {
     var valBlast = getVal("consum_blasted");
     if (valBlast === "scorpok") bonus.agi += 25; else if (valBlast === "roids") bonus.str += 25;
 
-    if (getVal("consum_juju_power")) bonus.str += 30; 
+    if (getVal("consum_juju_power")) bonus.str += 30;
     var valJuju = getVal("consum_juju");
     if (valJuju === "firewater") bonus.ap += 35; else if (valJuju === "might") bonus.ap += 40;
 
@@ -530,7 +577,7 @@ function calculateGearStats() {
 
     // Warchief's Blessing (UI ID check directly for safety)
     var elWB = document.getElementById("buff_warchief");
-    if(elWB && elWB.checked) bonus.haste += 15;
+    if (elWB && elWB.checked) bonus.haste += 15;
 
     // 6. APPLY STAT MULTIPLIERS
     var statMod = 1.0;
@@ -545,15 +592,15 @@ function calculateGearStats() {
     // 7. FINAL CALCULATIONS
     // AP = RaceAP(Base) + (Str*2) + (Agi*1) + BonusAP
     var finalAP = race.ap + (finalStr * 2) + (finalAgi * 1) + bonus.ap;
-    
+
     // Predatory Strikes (3/3): +10% AP
     apMod += 10;
-    finalAP = Math.floor(finalAP * (1+apMod/100));
+    finalAP = Math.floor(finalAP * (1 + apMod / 100));
 
     // Crit = RaceCrit(Base) + (Agi / 20) + BonusCrit
     var critFromAgi = finalAgi / 20.0;
     var finalCrit = race.crit + critFromAgi + bonus.crit;
-    
+
     // Talent/Buff Crits
     if (getVal("buff_lotp")) finalCrit += 3.0;
     finalCrit += 6.0; // Sharpened Claws
@@ -569,7 +616,7 @@ function calculateGearStats() {
     var updateInput = function (id, val, isPct) {
         var el = document.getElementById(id);
         if (!el) return;
-        if (isManual) { el.disabled = false; } 
+        if (isManual) { el.disabled = false; }
         else { el.disabled = true; el.value = isPct ? val.toFixed(2) : Math.floor(val); }
     };
 
@@ -579,10 +626,10 @@ function calculateGearStats() {
     updateInput("stat_crit", finalCrit, true);
     updateInput("stat_hit", finalHit, false);
     updateInput("stat_haste", bonus.haste, false);
-    updateInput("stat_wep_skill", race.wepSkill || 300, false); 
+    updateInput("stat_wep_skill", race.wepSkill || 300, false);
     updateInput("stat_wep_dmg_min", race.minDmg, false);
     updateInput("stat_wep_dmg_max", race.maxDmg, false);
-    
+
     // Update Planner Preview Box
     var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(finalAP);
     var elP_Crit = document.getElementById("gp_crit"); if (elP_Crit) elP_Crit.innerText = finalCrit.toFixed(2) + "%";
