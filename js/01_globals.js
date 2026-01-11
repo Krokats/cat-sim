@@ -21,7 +21,7 @@ var ENCHANT_SELECTION = {};
 // Configuration IDs mapped to UI elements
 var CONFIG_IDS = [
     // Sim Settings
-    "simTime", "simCount", // Removed calcMethod
+    "simTime", "simCount", 
     
     // Player Stats
     "stat_str", "stat_agi", "stat_ap", 
@@ -53,19 +53,21 @@ var CONFIG_IDS = [
     // Gear Specifics
     "set_t05_4p", "meta_wolfshead", "item_mcp",           
 
-    // Buffs & Consumables
-    "consum_wep",       
-    "consum_blasted",   
-    "consum_juju",      
-    "consum_food",      
-    "consum_mongoose",
-    "consum_juju_power", 
-    "consum_potion_quickness",
+    // Buffs & Consumables (UPDATED to Checkboxes)
+    "consum_elemental", "consum_consecrated",
+    "consum_mongoose", "consum_potion_quickness",
+    
+    "consum_food_str", "consum_food_agi", "consum_food_haste",
+    
+    "consum_scorpok", "consum_roids",
+    
+    "consum_juju_might", "consum_firewater", "consum_juju_power",
 
     // Raid Buffs
-    "buff_lotp", "buff_motw", "buff_kings", "buff_might",
-    "buff_tsa", "buff_bs", "buff_wf_totem",
-    "buff_goa_totem", "buff_soe_totem",
+    "buff_motw", "buff_kings", "buff_might", "buff_bs",
+    "buff_lotp", "buff_tsa", 
+    "buff_wf_totem", "buff_goa_totem", "buff_soe_totem",
+    "buff_warchief", // New
     
     // Talents
     "tal_ferocity", "tal_feral_aggression", "tal_open_wounds",
@@ -78,7 +80,8 @@ var CONFIG_IDS = [
 var SLOT_LAYOUT = {
     left: ["Head", "Neck", "Shoulder", "Back", "Chest", "Wrist"],
     right: ["Hands", "Waist", "Legs", "Feet", "Finger 1", "Finger 2", "Trinket 1", "Trinket 2"],
-    bottom: ["Main Hand", "Off Hand", "Idol"]
+    // Removed Idol as requested
+    bottom: ["Main Hand", "Off Hand"]
 };
 
 // Base Stats (Level 60 - Turtle WoW 1.18)

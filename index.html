@@ -48,7 +48,7 @@
                     </div>
                 </header>
 
-                <div id="itemSelectorModal" class="modal-overlay hidden">
+                <div id="itemSelectorModal" class="modal-overlay hidden" onclick="if(event.target === this) closeItemModal()">
                     <div class="modal-box">
                         <div class="modal-header">
                             <span class="modal-title" id="modalTitle">Select Item</span>
@@ -62,7 +62,7 @@
                     </div>
                 </div>
 
-                <div id="enchantSelectorModal" class="modal-overlay hidden">
+                <div id="enchantSelectorModal" class="modal-overlay hidden" onclick="if(event.target === this) closeEnchantModal()">
                     <div class="modal-box">
                         <div class="modal-header">
                             <span class="modal-title" id="enchantModalTitle">Select Enchant</span>
@@ -124,7 +124,7 @@
 
                                         <div class="char-middle">
                                             <h2 style="margin-bottom:10px; font-size:1rem;">Stat Weights (EP Calc)</h2>
-                                            <div class="gp-stats-config">
+                                            <div class="gp-two-col">
                                                 <div class="gp-input-group"><label>Str</label><input type="number" id="weight_str" value="2.4" onchange="recalcItemScores()"></div>
                                                 <div class="gp-input-group"><label>Agi</label><input type="number" id="weight_agi" value="2.5" onchange="recalcItemScores()"></div>
                                                 <div class="gp-input-group"><label>AP</label><input type="number" id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
@@ -133,21 +133,18 @@
                                             </div>
 
                                             <h2 style="margin:20px 0 10px 0; font-size:1rem;">Current Gear Stats</h2>
-                                            <div class="gp-stats-preview" style="background:transparent; border:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                                            <div class="gp-stats-preview">
                                                 <div style="background: rgba(255, 69, 0, 0.15); border: 1px solid var(--druid-orange); padding: 10px 20px; border-radius: 8px; text-align: center; width: 100%;">
-                                                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Gear Score (EP)</div>
+                                                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Gear Score</div>
                                                     <div id="gp_gs" style="font-size: 2rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255, 125, 10, 0.5);">0</div>
                                                 </div>
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%;">
-                                                    <div class="gp-stat-box" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center;">
-                                                        <div style="font-size:0.75rem; color:#aaa;">AP</div><div id="gp_ap" style="font-size:1.1rem; color:#ff9800; font-weight:600;">0</div>
-                                                    </div>
-                                                    <div class="gp-stat-box" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center;">
-                                                        <div style="font-size:0.75rem; color:#aaa;">Crit</div><div id="gp_crit" style="font-size:1.1rem; color:#ffeb3b; font-weight:600;">0%</div>
-                                                    </div>
-                                                    <div class="gp-stat-box" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; text-align: center;">
-                                                        <div style="font-size:0.75rem; color:#aaa;">Hit</div><div id="gp_hit" style="font-size:1.1rem; color:#fff; font-weight:600;">0%</div>
-                                                    </div>
+                                                <div class="gp-stat-grid">
+                                                    <div class="gp-stat-box"><div style="font-size:0.75rem; color:#aaa;">Str</div><div id="gp_str" style="font-size:1rem; color:#fff;">0</div></div>
+                                                    <div class="gp-stat-box"><div style="font-size:0.75rem; color:#aaa;">Agi</div><div id="gp_agi" style="font-size:1rem; color:#fff;">0</div></div>
+                                                    <div class="gp-stat-box"><div style="font-size:0.75rem; color:#aaa;">AP</div><div id="gp_ap" style="font-size:1rem; color:#ff9800;">0</div></div>
+                                                    <div class="gp-stat-box"><div style="font-size:0.75rem; color:#aaa;">Crit</div><div id="gp_crit" style="font-size:1rem; color:#ffeb3b;">0%</div></div>
+                                                    <div class="gp-stat-box"><div style="font-size:0.75rem; color:#aaa;">Hit</div><div id="gp_hit" style="font-size:1rem; color:#fff;">0%</div></div>
+                                                    <div class="gp-stat-box"><div style="font-size:0.75rem; color:#aaa;">Haste</div><div id="gp_haste" style="font-size:1rem; color:#fff;">0%</div></div>
                                                 </div>
                                             </div>
 
@@ -176,35 +173,51 @@
                                                 <span class="toggle-icon">▼</span>
                                             </div>
                                             <div class="card-body">
-                                                
-                                                <div class="gear-section-title">Consumables (Mutually Exclusive)</div>
-                                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
-                                                    <div class="input-group"><label>Weapon Buff</label><div class="select-wrapper"><select id="consum_wep"><option value="">None</option><option value="consecrated">Consecrated Stone (100AP Undead)</option><option value="elemental" selected>Elemental Stone (2% Crit)</option></select></div></div>
-                                                    <div class="input-group"><label>Food</label><div class="select-wrapper"><select id="consum_food"><option value="">None</option><option value="str" selected>Smoked Dumplings / Mushroom (20 Str)</option><option value="agi">Sour Mountain Berry (10 Agi)</option><option value="haste">Tel'abim Medley (2% Haste)</option></select></div></div>
-                                                    <div class="input-group"><label>Blasted Lands</label><div class="select-wrapper"><select id="consum_blasted"><option value="">None</option><option value="scorpok" selected>Scorpok Assay (25 Agi)</option><option value="roids">R.O.I.D.S (25 Str)</option></select></div></div>
-                                                    <div class="input-group"><label>Jujus / Firewater</label><div class="select-wrapper"><select id="consum_juju"><option value="">None</option><option value="firewater">Winterfall Firewater (35 AP)</option><option value="might" selected>Juju Might (40 AP)</option></select></div></div>
-                                                </div>
+                                                <div class="buff-grid">
+                                                    <div>
+                                                        <div class="gear-section-title" style="margin-top:0;">Consumables</div>
+                                                        <div class="checkbox-grid" style="grid-template-columns: 1fr;">
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_elemental" class="mut-ex-wep"><span class="checkmark"></span> Elemental Sharpening Stone (2% Crit)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_consecrated" class="mut-ex-wep"><span class="checkmark"></span> Consecrated Sharpening Stone (100 AP vs Undead)</label>
+                                                            
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_mongoose" checked><span class="checkmark"></span> Elixir of the Mongoose</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_potion_quickness"><span class="checkmark"></span> Potion of Quickness (5% Haste)</label>
+                                                            
+                                                            <div style="margin-top:10px; font-size:0.85rem; color:#666;">Food</div>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_food_str" class="mut-ex-food" checked><span class="checkmark"></span> Smoked Dumplings / Mushroom (20 Str)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_food_agi" class="mut-ex-food"><span class="checkmark"></span> Sour Mountain Berry (10 Agi)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_food_haste" class="mut-ex-food"><span class="checkmark"></span> Tel'abim Medley (2% Haste)</label>
+                                                            
+                                                            <div style="margin-top:10px; font-size:0.85rem; color:#666;">Blasted Lands</div>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_scorpok" class="mut-ex-bl" checked><span class="checkmark"></span> Scorpok Assay (25 Agi)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_roids" class="mut-ex-bl"><span class="checkmark"></span> R.O.I.D.S (25 Str)</label>
 
-                                                <div class="checkbox-grid">
-                                                    <label class="custom-checkbox"><input type="checkbox" id="consum_mongoose" checked><span class="checkmark"></span> Elixir of Mongoose</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="consum_juju_power" checked><span class="checkmark"></span> Juju Power (30 Str)</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="consum_potion_quickness"><span class="checkmark"></span> Potion of Quickness (5% Haste)</label>
-                                                </div>
+                                                            <div style="margin-top:10px; font-size:0.85rem; color:#666;">Jujus / Firewater</div>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_juju_might" class="mut-ex-juju" checked><span class="checkmark"></span> Juju Might (40 AP)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_firewater" class="mut-ex-juju"><span class="checkmark"></span> Winterfall Firewater (35 AP)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="consum_juju_power" checked><span class="checkmark"></span> Juju Power (30 Str)</label>
+                                                        </div>
+                                                    </div>
 
-                                                <div class="gear-section-title">Raid Buffs</div>
-                                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
-                                                    <div class="input-group"><label>Mark of the Wild</label><div class="select-wrapper"><select id="buff_motw"><option value="">None</option><option value="reg">Regular (+12)</option><option value="imp" selected>Improved (+16)</option></select></div></div>
-                                                    <div class="input-group"><label>Blessing of Might</label><div class="select-wrapper"><select id="buff_might"><option value="">None</option><option value="reg">Regular (+185 AP)</option><option value="imp" selected>Improved (+240 AP)</option></select></div></div>
-                                                    <div class="input-group"><label>Battle Shout</label><div class="select-wrapper"><select id="buff_bs"><option value="">None</option><option value="reg">Regular (+232 AP)</option><option value="imp" selected>Improved (+290 AP)</option></select></div></div>
-                                                    <div class="input-group"><label>Trueshot Aura</label><div class="select-wrapper"><select id="buff_tsa"><option value="">None</option><option value="reg">Regular (+55 AP)</option><option value="mod" selected>Modified (+5% AP)</option></select></div></div>
-                                                </div>
+                                                    <div>
+                                                        <div class="gear-section-title" style="margin-top:0;">Raid Buffs</div>
+                                                        <div class="checkbox-grid" style="grid-template-columns: 1fr;">
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_motw" checked><span class="checkmark"></span> Mark of the Wild (Imp)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_kings" checked><span class="checkmark"></span> Blessing of Kings</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_might" checked><span class="checkmark"></span> Blessing of Might (Imp)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_bs" checked><span class="checkmark"></span> Battle Shout (Imp)</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_lotp" checked><span class="checkmark"></span> Leader of the Pack</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_tsa" checked><span class="checkmark"></span> Trueshot Aura</label>
+                                                            
+                                                            <div style="margin-top:10px; font-size:0.85rem; color:#666;">Totems</div>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_wf_totem" checked><span class="checkmark"></span> Windfury Totem</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_goa_totem" checked><span class="checkmark"></span> Grace of Air</label>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_soe_totem" checked><span class="checkmark"></span> Strength of Earth</label>
 
-                                                <div class="checkbox-grid">
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_kings" checked><span class="checkmark"></span> Blessing of Kings</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_lotp" checked><span class="checkmark"></span> Leader of the Pack</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_wf_totem" checked><span class="checkmark"></span> Windfury Totem</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_goa_totem" checked><span class="checkmark"></span> Grace of Air</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="buff_soe_totem" checked><span class="checkmark"></span> Strength of Earth</label>
+                                                            <div style="margin-top:10px; font-size:0.85rem; color:#666;">World Buffs</div>
+                                                            <label class="custom-checkbox"><input type="checkbox" id="buff_warchief" checked><span class="checkmark"></span> Warchief's Blessing</label>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -255,10 +268,7 @@
                                                         <div class="input-wrapper"><label>Haste %</label><input type="number" id="stat_haste" disabled></div>
                                                     </div>
                                                 </div>
-                                                <div class="input-group" style="margin-top:15px; margin-bottom:0;">
-                                                    <label>Mana</label><input type="number" id="mana_pool" value="3000">
-                                                </div>
-                                                <input type="hidden" id="stat_wep_dmg_min" value="55">
+                                                <input type="hidden" id="mana_pool" value="3000"> <input type="hidden" id="stat_wep_dmg_min" value="55">
                                                 <input type="hidden" id="stat_wep_dmg_max" value="85">
                                             </div>
                                         </div>
@@ -269,10 +279,38 @@
                                             </div>
                                             <div class="card-body">
                                                 <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Only optional talents listed. Others assumed constant.</p>
-                                                <div class="input-group-small"><label>Ferocity (0-5)</label><input type="number" id="tal_ferocity" value="5" min="0" max="5"></div>
-                                                <div class="input-group-small"><label>Feral Aggression (0-5)</label><input type="number" id="tal_feral_aggression" value="5" min="0" max="5"></div>
-                                                <div class="input-group-small"><label>Imp. Shred (0-2)</label><input type="number" id="tal_imp_shred" value="2" min="0" max="2"></div>
-                                                <div class="input-group-small"><label>Nat. Shapeshifter (0-3)</label><input type="number" id="tal_nat_shapeshifter" value="3" min="0" max="3"></div>
+                                                <div class="input-group-small">
+                                                    <label>Ferocity</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="tal_ferocity">
+                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="input-group-small" style="margin-top:10px;">
+                                                    <label>Feral Aggression</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="tal_feral_aggression">
+                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="input-group-small" style="margin-top:10px;">
+                                                    <label>Imp. Shred</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="tal_imp_shred">
+                                                            <option value="0">0</option><option value="1">1</option><option value="2" selected>2</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="input-group-small" style="margin-top:10px;">
+                                                    <label>Nat. Shapeshifter</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="tal_nat_shapeshifter">
+                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                                 <input type="hidden" id="tal_berserk" value="1">
                                             </div>
                                         </div>
@@ -299,8 +337,12 @@
                                                     <label class="custom-checkbox"><input type="checkbox" id="debuff_cor" checked><span class="checkmark"></span> Curse of Recklessness (-640)</label>
                                                 </div>
 
-                                                <div class="enemy-info-box">
-                                                    <div class="enemy-stat-row"><span>Phys Reduction:</span> <span id="sumRes" class="enemy-stat-val">0%</span></div>
+                                                <div class="enemy-info-box" style="margin-top:15px;">
+                                                    <div style="font-size:0.85rem; color:#aaa; margin-bottom:5px;">Damage Reduction (Armor)</div>
+                                                    <div class="enemy-bar-container">
+                                                        <div id="enemyArmorBar" class="enemy-bar-fill" style="width: 0%;"></div>
+                                                        <div id="enemyArmorText" class="enemy-bar-text">0%</div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

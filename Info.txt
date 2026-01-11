@@ -204,13 +204,46 @@ AttackSpeed-Modifier = 1 / (1+ (Use_TigerFury/100) + ([T1/8p]*15/100))
 
 
 *****
-- Gear Planner: Nur Druid Items, Waffen (wie Moonkin), Idol ausblenden (über config)
-- UI: Gear Planner Auswahl mit Esc oder aus Fenster klicken schließen
+
+- Share/Save Config: Short URL with https://krokats.github.io/cat-sim/
+- Gear Planner: Idol ausblenden (über config)
+- Gear Planner Auswahl mit Esc oder aus Fenster klicken schließen
+- Gear Planner Stat Weights in der Mitte in zwei Spalten anzeigen
+- Gear Planner Current Gear Stats: Gear Score wird bleibt immer 0 und alle Stats (Str, Agi, AP, Crit %, Hit %, Haste %) anzeigen
+- Raid Buffs immer nur die Improved Variante auswählbar (Mark of the Wild, Blessing of Might, Battle Shout)
+- Trueshot Aura Effect korrigieren: "Increases the attack power of party members within 45 yards by 5%, plus an additional 55. The aura lasts until canceled."
+- Alle Buffs & Consumeables nur als Checkboxen darstellen und in zwei Spalten
+- Consumeable, die sich ausschließen, müssen sich gegenseitig deaktivieren (also z.B. Consecrated Stone oder Elemental Stone)
+- Mana in Player Stats ausblenden
+- Optionale Talente als Dropdown
+- Enemy: Phys. Reduction besser darstellen - vielleicht als kleine Grün/Rote Progressbar
+
+- Equipment:
+-- Wolfshead Helm und Manual Crowd Pummeler entfernen
+-- Spezielles Tier-Sets und Trinktes (Procc-Effekte und On-Use-Effecte) in "Special Gear / Sets" aufnehmen
+
 Engine:
-- Finishing Move entfernen nicht CP
-- Bug bei "Shred": Castet viel zu selten und zeigt im CombatLog keine Energy-Veränderungen
+- Optionen für Skills:
+- Ferocious Bite: Wait for Min. Energy (can't use any Energy if 5 CP until Ferocious Bite)
+- Run XXXX Fights. Show Min / Average / Max Fight Results
+
 CombatLog:
 - Bei einem kritischen Treffer den Schaden aufteilen in Normalen Schaden und Kritischen Schaden (=100% Normaler Schaden)
 - Damage von Abilities wie Shred oder Claw soll auch als Normaler Schaden (bzw. kritischer Schaden) registriert werden. Nur Dmg von speziellen Proccs (z.B. Chance, 150 Nature Schaden zu verursachen) sollte als spezieller Schaden gelten.
 - Enchants ergänzen!!
+
+
+
+
+ROTAS
+
+*****
+/cast [nomybuff:"Blood Frenzy"] Tiger's Fury; [nodebuff:"Rip", noimmune:bleed, combo:#>4] Rip; [combo:#5] Ferocious Bite; [nodebuff:"Rake", noimmune:bleed] Rake; [nobehind] Claw; [behind] Shred 
+/cast [mypower:<=20] Reshift
+****
+
+
+
+
+
 

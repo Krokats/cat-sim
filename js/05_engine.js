@@ -2,14 +2,11 @@
  * Feral Simulation - File 5: Simulation Engine & Math
  * Updated for Turtle WoW 1.18 (Feral Cat)
  * Features: 
- * - Fully stochastic Event-based Engine (No deterministic mode)
+ * - Fully stochastic Event-based Engine
  * - Correct Additive Haste Formula
  * - Dynamic Armor Reduction (Stacking Debuffs)
- * - Windfury Totem & Potion of Quickness
+ * - Windfury Totem & Potion of Quickness logic
  * - Detailed Logging including Energy
- * - FIXED: CP Consumption on Finisher & Bleed Immunity Logic
- * - FIXED: Shred Condition (now casts with energy)
- * - FIXED: Combat Log Splitting (Normal/Crit)
  */
 
 // ============================================================================
@@ -75,7 +72,7 @@ function getSimInputs() {
         inputAP: getNum("stat_ap"),     
         inputCrit: getNum("stat_crit"), 
         inputHit: getNum("stat_hit"),
-        inputHaste: getNum("stat_haste"), // Gear Haste + Warchief
+        inputHaste: getNum("stat_haste"), // Gear Haste + Warchief + Enchants
         
         manaPool: getNum("mana_pool") || 3000,
         wepSkill: 300, 
@@ -87,7 +84,7 @@ function getSimInputs() {
         enemyType: getSel("enemy_type"), 
 
         // Debuffs (Armor Reduction)
-        debuff_major_armor: getSel("debuff_major_armor"), // snder/iea
+        debuff_major_armor: getSel("debuff_major_armor"), // sunder/iea
         debuff_eskhandar: getCheck("debuff_eskhandar"),
         debuff_cor: getCheck("debuff_cor"),
         debuff_ff: getCheck("debuff_ff"), 
@@ -103,18 +100,19 @@ function getSimInputs() {
         use_claw: getCheck("use_claw"),
         use_ff: getCheck("use_ff"), 
 
-        // Active Buffs/Consumables
+        // Active Buffs/Consumables (Logic Flags)
+        // Stats from consumables are already in inputAP/Crit, but we need flags for effects
         buff_wf_totem: getCheck("buff_wf_totem"),
         consum_potion_quickness: getCheck("consum_potion_quickness"),
 
-        // Talents
+        // Talents (Now handled via Selects, but getNum works for both Input and Select values)
         tal_ferocity: getNum("tal_ferocity"),
         tal_feral_aggression: getNum("tal_feral_aggression"),
         tal_imp_shred: getNum("tal_imp_shred"),
         tal_nat_shapeshifter: getNum("tal_nat_shapeshifter"),
         tal_berserk: getNum("tal_berserk"),
         
-        // Constant Talents
+        // Constant Talents (Not exposed in UI yet, but used in logic)
         tal_open_wounds: 3,
         tal_sharpened_claws: 3,
         tal_primal_fury: 2,
@@ -231,7 +229,7 @@ function runCoreSimulation(cfg) {
     // Speed = BaseSpeed / (1 + (Sum% / 100))
     function getHasteMod() {
         var hPercent = 0;
-        // Gear Haste (includes Warchief via Gear.js)
+        // Gear Haste (includes Warchief via Gear.js input)
         if (cfg.inputHaste > 0) hPercent += cfg.inputHaste; 
         
         // Dynamic Haste
@@ -267,10 +265,8 @@ function runCoreSimulation(cfg) {
                          action === "Rake" || action === "Rip" || 
                          action === "Ferocious Bite") {
                     
-                    // Standard Skills + White Hits = Normal / Crit Split
                     if (isCrit) {
                         // Split Crit Damage: 50% Normal (Base), 50% Crit (Bonus)
-                        // Assuming 200% Crit Damage Multiplier standard for Feral
                         dmgNorm = dmgVal / 2;
                         dmgCrit = dmgVal / 2;
                     } else {
@@ -364,8 +360,7 @@ function runCoreSimulation(cfg) {
                             energy = Math.min(100, energy + 5);
                         }
                     } else {
-                        // Bleed active but target is immune (config changed or logic fail fallback)
-                        // Do not deal damage, do not restore energy
+                        // Bleed active but target is immune
                     }
                 }
             }
@@ -547,7 +542,6 @@ function runCoreSimulation(cfg) {
             
             // 6. Shred / Claw
             if (!action) {
-                // FIXED: Condition now allows Shred if energy is sufficient, not just OoC
                 if ((isOoc || bleedImmune) && behind && shredActive) {
                     if (energy >= costShred || isOoc) action = "Shred";
                 } 
@@ -683,8 +677,7 @@ function runCoreSimulation(cfg) {
                             for(var i=1; i<=ticks; i++) {
                                 addEvent(t + (i*2.0), "dot_tick", { name: "rip", dmg: tickDmg, label: "Rip (DoT)" });
                             }
-                            cpGen = 0; // Handled below
-                            // FIXED: Do NOT reset CP here yet, or log will show 0 CP. Reset after dealDamage.
+                            cpGen = 0; 
                             isBleed = true; 
                         }
                         else if (action === "Ferocious Bite") {
@@ -698,7 +691,6 @@ function runCoreSimulation(cfg) {
                             if (cfg.tal_feral_aggression > 0) abilityDmg *= (1 + cfg.tal_feral_aggression * 0.03);
                             
                             cpGen = 0;
-                            // FIXED: Do NOT reset CP here yet.
                         }
                         
                         abilityDmg *= modNaturalWeapons;
@@ -712,29 +704,11 @@ function runCoreSimulation(cfg) {
                         
                         if (abilityDmg > 0) dealDamage(action, abilityDmg, isBleed ? "Bleed" : "Physical", res, (res==="CRIT"), false);
                         
-                        // FIXED: Handle CP Reset and Carnage AFTER Logging/Damage
+                        // Handle CP Consumption and Carnage
                         if (action === "Rip") {
                             cp = 0;
                         } 
                         else if (action === "Ferocious Bite") {
-                            // Default reset
-                            cp = 0;
-                            // Carnage Logic
-                            var carnageChance = 0.20 * cfg.tal_carnage * cp; // Uses 0? No wait, logic error if I use 'cp' after reset.
-                            // I need to use pre-reset CP for chance calc? No, Carnage is based on used CP?
-                            // Usually Carnage is: 20% per combo point used.
-                            // But I just set cp = 0.
-                            // RE-FIX:
-                        }
-
-                        // --- RE-IMPLEMENTING FINISHER RESET LOGIC CORRECTLY ---
-                        // For Rip and FB, we must reset CP. But Carnage needs the OLD CP to calculate chance.
-                        // However, standard flow is:
-                        if (action === "Rip") {
-                             cp = 0;
-                        }
-                        if (action === "Ferocious Bite") {
-                            // Note: 'cp' variable still holds the value used for damage because we haven't changed it yet.
                             var oldCp = cp; 
                             cp = 0; // Consume
                             
@@ -746,25 +720,14 @@ function runCoreSimulation(cfg) {
                                     logAction("Carnage", "Refreshed Rake", "Proc", 0, false, false);
                                 }
                                 if (auras.rip > t) {
-                                    // Refresh Rip Logic
-                                    var rTicks = 4 + oldCp; // Use full strength or old CP? Usually creates new rip based on previous. 
-                                    // Let's assume it refreshes the current duration.
-                                    // Actually sim code created a NEW Rip based on stats.
-                                    // Let's stick to the previous implementation logic:
-                                    // It generated a Rip based on current stats/CP?
-                                    // The previous code used 'cp' variable which was set to 0? No, that was the bug.
-                                    // Let's use oldCp (max 5) for the strength of the free Rip.
-                                    
+                                    // Refresh Rip Logic with oldCP strength
+                                    var rTicks = 4 + oldCp;
                                     var cpS = Math.min(4, oldCp);
                                     var rAp = (totalAP - base.baseAp);
                                     var rDmg = 47 + (oldCp - 1)*31 + (cpS/100 * rAp);
                                     if (cfg.tal_open_wounds > 0) rDmg *= (1 + 0.15 * cfg.tal_open_wounds);
                                     
-                                    // Reset Tick timer relative to T
                                     auras.rip = t + (rTicks * 2.0); 
-                                    // We need to clear old events? Complexity high.
-                                    // For Sim simplicity, just adding new ticks is okay, though double ticking might occur if not careful.
-                                    // But standard Sim approach: add new events.
                                     for(var i=1; i<=rTicks; i++) addEvent(t + (i*2.0), "dot_tick", { name: "rip", dmg: rDmg, label: "Rip (DoT)" });
                                     
                                     logAction("Carnage", "Refreshed Rip", "Proc", 0, false, false);

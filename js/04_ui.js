@@ -314,6 +314,22 @@ function setupUIListeners() {
             // Ignore boss select in general loop to prevent double firing, handled separately
             if (el.id === "enemy_boss_select") return;
 
+            // MUTUAL EXCLUSION LOGIC
+            // If a checkbox with a mutual exclusion class is checked, uncheck others in group
+            if (el.type === "checkbox" && el.checked) {
+                var groupClass = null;
+                if (el.classList.contains("mut-ex-wep")) groupClass = "mut-ex-wep";
+                else if (el.classList.contains("mut-ex-food")) groupClass = "mut-ex-food";
+                else if (el.classList.contains("mut-ex-bl")) groupClass = "mut-ex-bl";
+                else if (el.classList.contains("mut-ex-juju")) groupClass = "mut-ex-juju";
+
+                if (groupClass) {
+                    document.querySelectorAll("." + groupClass).forEach(function(sib) {
+                        if (sib !== el) sib.checked = false;
+                    });
+                }
+            }
+
             if (ACTIVE_SIM_INDEX >= 0 && SIM_LIST[ACTIVE_SIM_INDEX]) {
                 saveSimData(ACTIVE_SIM_INDEX);
 
@@ -348,6 +364,14 @@ function setupUIListeners() {
             }
         });
     }
+
+    // 3. Escape Key to Close Modals
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+            closeItemModal();
+            closeEnchantModal();
+        }
+    });
 
     // Run Button
     var btn = document.getElementById('btnRun');
@@ -409,12 +433,47 @@ function updateEnemyInfo() {
     // Calculate effective armor
     var effArmor = Math.max(0, armor - debuff);
 
-    // Turtle WoW 1.18 DR Formula approximation for Lvl 60 attacker
+    // Turtle WoW 1.18 DR Formula approximation for Lvl 60 attacker vs 63 Boss
     // DR = Armor / (Armor + 5882.5)
     var dr = effArmor / (effArmor + 5882.5);
     var pct = (dr * 100).toFixed(2);
 
-    setText('sumRes', pct + "% (Eff: " + effArmor + ")");
+    // Update Text
+    // setText('sumRes', pct + "% (Eff: " + effArmor + ")"); // Old Element
+    
+    // NEW: Update Progress Bar
+    var barFill = document.getElementById("enemyArmorBar");
+    var barText = document.getElementById("enemyArmorText");
+    
+    if (barText) {
+        barText.innerText = `Reduction: ${pct}% (Armor: ${effArmor})`;
+    }
+    
+    if (barFill) {
+        // Percentage of the bar to fill. If DR is 75%, bar is 75% full.
+        // Cap visual at 75% (max standard mitigation) or 100%
+        var visWidth = Math.min(100, parseFloat(pct));
+        barFill.style.width = visWidth + "%";
+        
+        // Color Logic:
+        // Green (Low Armor/Low DR) -> Red (High Armor/High DR)
+        // Hue 120 (Green) -> 0 (Red)
+        // Scaling: 0% DR = 120, 75% DR = 0 (Approx cap for bosses)
+        // Let's say max usually ~75% for Plate/Bear, but boss armor rarely gives that much DR to players.
+        // A boss with 3700 armor has ~38% DR. 
+        // Let's map 0% -> 50% DR range to Green -> Red to make it more sensitive?
+        // Or simply 0% -> 100%.
+        
+        // Let's map 0% DR (Green) to 50% DR (Red) since bosses rarely go above 50% vs players.
+        var factor = parseFloat(pct) / 50.0; // 0.0 to 1.0+
+        if (factor > 1) factor = 1;
+        
+        var hue = 120 - (factor * 120);
+        barFill.style.backgroundColor = `hsl(${hue}, 80%, 45%)`;
+        
+        // Remove gradient class if we use manual color
+        barFill.className = "enemy-bar-fill"; 
+    }
 }
 
 function updatePlayerStats() {
@@ -428,10 +487,9 @@ function updatePlayerStats() {
     setText("sumCrit", crit.toFixed(2) + "%");
     setText("sumHit", hit.toFixed(2) + "%");
     setText("sumHaste", haste.toFixed(2) + "%");
-    setText("gp_ap", Math.floor(ap));
-    setText("gp_crit", crit.toFixed(2) + "%");
-    setText("gp_hit", hit.toFixed(2) + "%");
-
+    
+    // Planner Box Updates are handled in 03_gear.js now for 2-column layout
+    
     updateRotaSummary();
     updateTrinketSummary();
 }
@@ -465,9 +523,9 @@ function updateTrinketSummary() {
 
     var t1 = GEAR_SELECTION["Trinket 1"];
     var t2 = GEAR_SELECTION["Trinket 2"];
-    var i = GEAR_SELECTION["Idol"];
+    // Idol removed from summary
 
-    [t1, t2, i].forEach(id => {
+    [t1, t2].forEach(id => {
         if (id && ITEM_ID_MAP[id]) {
             var li = document.createElement("li");
             li.innerText = ITEM_ID_MAP[id].name;
